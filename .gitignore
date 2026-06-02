@@ -1,0 +1,16 @@
+# Word/Office temporary lock files
+~$*.docx
+~$*.doc
+~$*.xlsx
+~$*.xls
+~$*.pptx
+~$*.ppt
+
+# Generic temporary and OS metadata files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Local workspace drafts that are not part of the initial docs push
+workspace/
