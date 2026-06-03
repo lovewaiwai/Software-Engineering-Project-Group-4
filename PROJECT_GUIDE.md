@@ -1,42 +1,93 @@
-# Project Guide
+# 项目指南
 
-## Purpose
+## 1. 项目用途
 
-This workspace is for the software engineering course design project. The current selected topic is:
+本仓库用于《软件工程》课程设计项目的团队协作、文档沉淀、代码开发与最终交付。
 
-T-05 GroupBuy 城市社区团购系统
+当前选题：
 
-## Directory Rules
+`T-02 SwapCampus 校园闲置物品交易平台`
 
-### `spring/`
+SwapCampus 面向校内师生，提供闲置物品发布、搜索、沟通、下单、支付模拟、线下面交、柜机中转、评价、信用分和后台审核等能力。
 
-`spring/` is the original course package. It contains the assignment brief, topic guides, management form templates, deliverable templates, and source-code skeleton provided by the course.
+## 2. 目录规则
 
-Do not place newly generated files in `spring/`.
+### `docs/`
 
-This rule applies to both people and agents:
+`docs/` 存放课程原始资料、选题指南、管理表单模板、产出模板和课程包中的源代码仓库骨架。
 
-- Do not create new documents inside `spring/`.
-- Do not create generated drafts inside `spring/`.
-- Do not create code, scripts, rendered images, PDFs, or temporary outputs inside `spring/`.
-- Only read files from `spring/` unless the user explicitly asks to modify an original template.
+该目录应视为课程参考资料。除非团队明确决定复制并填写某份模板，否则不要直接修改其中的原始模板文件。
+
+### `team_docs/`
+
+`team_docs/` 存放团队正式协作文档、架构说明、需求设计、数据库设计、接口草案、开发规范和任务拆分方案。
+
+当前核心团队文档：
+
+- `team_docs/GIT_WORKFLOW_GUIDE.md`
+- `team_docs/T-02_SwapCampus_总体方案.md`
+- `team_docs/D2-D3_SRS_用例流程原型.md`
+- `team_docs/D4-D5_架构详细数据库接口设计.md`
+- `team_docs/T-02_SwapCampus_Agent任务拆分.md`
 
 ### `workspace/`
 
-Use `workspace/` for our own project outputs, drafts, plans, filled forms, implementation notes, and generated materials.
+`workspace/` 用于个人草稿、临时生成文件、实验材料、尚未准备提交的中间产物。
 
-Current T-05 materials are stored in:
+该目录已被 Git 忽略，不作为正式交付内容。
 
-`workspace/T-05_GroupBuy/`
+## 3. 当前设计口径
 
-## Current Generated Materials
+- 前端：Vue 3 + Vite + TypeScript + Element Plus + Pinia + Vue Router。
+- 后端：Spring Boot 3 + Spring Security + JWT + MyBatis-Plus。
+- 数据库：SQL Server 2022 Developer/Express，使用 SQL Server Management Studio 管理。
+- 对象存储：MinIO，本地部署。
+- 即时通讯：Spring WebSocket，必要时可降级为短轮询。
+- 部署：Docker Compose；SQL Server 可使用本地服务或容器化服务。
 
-- `workspace/T-05_GroupBuy/T-05_GroupBuy_选题申报表_草稿.docx`
-- `workspace/T-05_GroupBuy/T-05_GroupBuy_总体方案.md`
+## 4. 功能范围
 
-## Collaboration Notes
+必做模块：
 
-- Keep course templates in `spring/` unchanged unless explicitly requested.
-- Put future drafts and deliverables under `workspace/T-05_GroupBuy/`.
-- If a template from `spring/` is needed, copy it into `workspace/T-05_GroupBuy/` first, then edit the copy.
-- Keep documents and code consistent. When project scope, architecture, database design, or task division changes, update the corresponding workspace document.
+- 用户体系：注册登录、学号实名验证、个人主页、信用分。
+- 商品发布：多图、分类、标签、价格、成色、上下架、审核。
+- 商品检索：关键词搜索、分类浏览、价格区间、成色筛选。
+- 交易流程：下单、取消、模拟支付、面交确认、柜机中转、评价。
+- 站内通讯：文本、图片、表情聊天，支持商品和订单上下文。
+- 后台管理：商品审核、举报处理、用户管理、数据看板。
+
+附加项：
+
+- 个性化推荐：基于浏览、收藏、订单和分类偏好的推荐流。
+- AI 自动分类与定价建议：默认使用规则引擎 Mock，后续可替换真实 AI 服务。
+- 校园柜机中转：默认使用 Mock 柜机接口，支持扫码寄件和扫码取件演示。
+- 信用积分游戏化：签到、任务、积分兑换，和信用分分离。
+- 模拟支付：默认使用 Mock 支付接口，保留真实支付扩展点。
+
+## 5. 协作规则
+
+- 当前项目只围绕 T-02 展开，新增文档、代码和任务拆分都应聚焦 SwapCampus。
+- 课程模板保留在 `docs/` 中；需要填写时先复制到团队约定位置再编辑。
+- 正式设计文档、架构说明和团队规则放入 `team_docs/`。
+- 临时草稿、实验文件、个人中间产物放入 `workspace/`。
+- 修改项目范围、技术栈、数据库结构或接口设计时，必须同步更新对应设计文档。
+- 分支命名建议使用 `docs/...`、`feature/...`、`fix/...` 等清晰前缀。
+- 提交信息建议使用简短英文前缀，例如 `docs: add architecture design documents`。
+
+## 6. 最小演示路径
+
+后续开发应优先保证以下路径完整可跑：
+
+```text
+注册登录 -> 学号实名验证 -> 卖家发布商品 -> 管理员审核通过
+-> 买家搜索/推荐找到商品 -> 站内聊天 -> 买家下单 -> 卖家确认
+-> 模拟支付 -> 面交或柜机交付 -> 买家确认收货 -> 双方评价
+-> 信用分更新 -> 用户举报 -> 管理员处理 -> 审计日志记录
+```
+
+## 7. 交付提醒
+
+- D2-D3 对应需求规格、用例图、业务流程图、核心页面原型。
+- D4-D5 对应概要设计、详细设计、数据库设计、接口草案。
+- D6 之后进入后端基础工程、前端页面、联调、测试和部署。
+- 所有附加项都已在设计层预留接口，后续可由不同 agent 按模块并行完成。
