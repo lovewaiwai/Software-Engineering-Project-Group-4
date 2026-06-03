@@ -2,40 +2,18 @@
 
 SwapCampus 是面向校园师生的闲置物品交易平台。本仓库当前已经完成项目代码骨架，目标是让后续不同成员或 agent 可以按模块并行开发后端、前端、数据库、部署和测试内容。
 
-## 技术栈
+## 一键启动
 
-- 后端：Spring Boot 3、Spring Security、JWT、MyBatis-Plus、Spring WebSocket、Swagger/OpenAPI、SQL Server JDBC。
-- 前端：Vue 3、Vite、TypeScript、Element Plus、Pinia、Vue Router、Axios。
-- 数据库：SQL Server 2022 Developer/Express。
-- 对象存储：MinIO，本地通过 Docker 启动。
-- 部署：Docker Compose，默认提供 SQL Server 和 MinIO；前后端容器通过 `app` profile 预留。
-- 测试：JUnit 5、Mockito、Postman/Apifox、k6 预留。
-
-## 目录结构
-
-```text
-backend/              Spring Boot 后端工程骨架
-frontend/             Vue 3 前端工程骨架
-db/migrations/        SQL Server 初始化脚本
-infra/                环境变量示例和部署配置
-tests/                接口测试、端到端测试、性能测试资产预留
-team_docs/            团队设计文档和任务拆分文档
-docker-compose.yml    本地基础设施编排
-README.md             项目启动和开发说明
-```
-
-## 环境准备
-
-建议本机安装：
+第一次启动前请先安装：
 
 - Git
+- Docker Desktop
 - JDK 17 或更高版本，推荐 JDK 17
 - Maven 3.9+
 - Node.js 20+ 和 npm
-- Docker Desktop
-- SQL Server Management Studio 或 Azure Data Studio
+- SQL Server Management Studio，简称 SSMS，用来查看 Docker 里的 SQL Server
 
-拉取当前骨架分支：
+拉取代码：
 
 ```powershell
 git clone https://github.com/lovewaiwai/Software-Engineering-Project-Group-4.git
@@ -43,60 +21,29 @@ cd Software-Engineering-Project-Group-4
 git switch feature/project-code-scaffold
 ```
 
-## 本地基础设施启动
-
-启动 SQL Server 和 MinIO：
+启动基础设施：
 
 ```powershell
-docker compose up -d sqlserver minio
+docker compose up -d
 ```
 
-SQL Server 默认连接信息：
+这条命令会自动启动：
+
+- `sqlserver`：Docker 中的 SQL Server 2022。
+- `db-init`：自动执行 `db/migrations/*.sql` 和 `db/seeds/*.sql`。
+- `minio`：本地对象存储服务。
+
+启动后用 SSMS 连接 Docker 里的 SQL Server：
 
 ```text
-host: localhost
-port: 1433
-database: SwapCampus
-username: sa
-password: YourStrong!Passw0rd
+Server Name: localhost,1433
+Authentication: SQL Server 身份验证
+User Name: sa
+Password: YourStrong!Passw0rd
+Trust Server Certificate: 勾选
 ```
 
-数据库容器启动后，使用 SSMS、Azure Data Studio 或 `sqlcmd` 执行初始化脚本：
-
-```text
-db/migrations/V001__init.sql
-```
-
-MinIO 控制台：
-
-```text
-http://localhost:9001
-```
-
-默认账号密码：
-
-```text
-minioadmin / minioadmin
-```
-
-## 后端启动
-
-后端配置文件：
-
-```text
-backend/src/main/resources/application.yml
-```
-
-可以通过环境变量覆盖数据库和 MinIO 配置：
-
-```powershell
-$env:DB_URL="jdbc:sqlserver://localhost:1433;databaseName=SwapCampus;encrypt=true;trustServerCertificate=true"
-$env:DB_USERNAME="sa"
-$env:DB_PASSWORD="YourStrong!Passw0rd"
-$env:MINIO_ENDPOINT="http://localhost:9000"
-$env:MINIO_ACCESS_KEY="minioadmin"
-$env:MINIO_SECRET_KEY="minioadmin"
-```
+注意：SSMS 里端口写法是 `localhost,1433`，中间是英文逗号，不是冒号。
 
 启动后端：
 
@@ -105,25 +52,7 @@ cd backend
 mvn spring-boot:run
 ```
 
-后端检查：
-
-```powershell
-mvn test
-mvn -DskipTests package
-```
-
-常用地址：
-
-```text
-后端服务: http://localhost:8080
-Swagger UI: http://localhost:8080/swagger-ui.html
-OpenAPI JSON: http://localhost:8080/v3/api-docs
-WebSocket 聊天占位: ws://localhost:8080/ws/chat
-```
-
-## 前端启动
-
-安装依赖并启动开发服务器：
+启动前端：
 
 ```powershell
 cd frontend
@@ -131,16 +60,146 @@ npm install
 npm run dev
 ```
 
-前端构建检查：
+常用地址：
+
+```text
+前端: http://localhost:5173
+后端: http://localhost:8080
+Swagger UI: http://localhost:8080/swagger-ui.html
+MinIO 控制台: http://localhost:9001
+MinIO 默认账号: minioadmin
+MinIO 默认密码: minioadmin
+WebSocket 聊天占位: ws://localhost:8080/ws/chat
+```
+
+## 数据库脚本机制
+
+Docker 启动时会自动运行 `db-init` 服务。它会按文件名顺序执行：
+
+```text
+db/migrations/*.sql
+db/seeds/*.sql
+```
+
+当前建表脚本：
+
+```text
+db/migrations/V001__init.sql
+```
+
+执行记录会写入：
+
+```text
+SwapCampus.dbo.__schema_migrations
+```
+
+所以同一个 `.sql` 文件默认只会执行一次。后续要加演示数据时，把 SQL 文件放到：
+
+```text
+db/seeds/
+```
+
+例如：
+
+```text
+db/seeds/V001__demo_users.sql
+db/seeds/V002__demo_products.sql
+```
+
+然后执行：
+
+```powershell
+docker compose up -d db-init
+```
+
+也可以手动触发数据库脚本同步：
+
+```powershell
+.\scripts\init-docker-db.ps1
+```
+
+如果想清空 Docker 里的数据库并从零重建：
+
+```powershell
+docker compose down -v
+docker compose up -d
+```
+
+注意：`docker compose down -v` 会删除 SQL Server 和 MinIO 的 Docker 数据卷，容器里的数据库数据会被清空。
+
+## 技术栈
+
+- 后端：Spring Boot 3、Spring Security、JWT、MyBatis-Plus、Spring WebSocket、Swagger/OpenAPI、SQL Server JDBC。
+- 前端：Vue 3、Vite、TypeScript、Element Plus、Pinia、Vue Router、Axios。
+- 数据库：SQL Server 2022 Developer/Express，默认通过 Docker 运行。
+- 对象存储：MinIO，默认通过 Docker 运行。
+- 部署：Docker Compose。
+- 测试：JUnit 5、Mockito、Postman/Apifox、k6 预留。
+
+## 目录结构
+
+```text
+backend/              Spring Boot 后端工程骨架
+frontend/             Vue 3 前端工程骨架
+db/migrations/        SQL Server 建表和结构迁移脚本
+db/seeds/             演示数据和种子数据脚本
+infra/                环境变量示例和部署脚本
+scripts/              本地辅助脚本
+tests/                接口测试、端到端测试、性能测试资产预留
+team_docs/            团队设计文档和任务拆分文档
+docker-compose.yml    本地基础设施编排
+README.md             项目启动和开发说明
+```
+
+## 后端说明
+
+后端配置文件：
+
+```text
+backend/src/main/resources/application.yml
+```
+
+默认数据库配置已经指向 Docker 映射出来的 SQL Server：
+
+```text
+jdbc:sqlserver://localhost:1433;databaseName=SwapCampus;encrypt=true;trustServerCertificate=true
+```
+
+默认账号密码：
+
+```text
+username: sa
+password: YourStrong!Passw0rd
+```
+
+如果你修改了 Docker 映射端口，例如 `.env` 里设置 `DB_PORT=11433`，启动后端前也要同步覆盖：
+
+```powershell
+$env:DB_URL="jdbc:sqlserver://localhost:11433;databaseName=SwapCampus;encrypt=true;trustServerCertificate=true"
+```
+
+后端检查：
+
+```powershell
+cd backend
+mvn test
+mvn -DskipTests package
+```
+
+## 前端说明
+
+启动：
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+构建检查：
 
 ```powershell
 npm run build
-```
-
-默认访问地址：
-
-```text
-http://localhost:5173
 ```
 
 当前前端已预留以下路由：
@@ -259,27 +318,15 @@ git switch -c feature/user-credit
 - 前端管理端：商品审核、举报处理、用户管理、柜机配置、数据看板。
 - 测试部署数据：种子数据、接口测试集合、Docker 一键启动、演示脚本、k6。
 
-## 当前 TODO
+## 备用：使用本机 SQL Server
 
-- 实现真实注册、登录、JWT Filter 和角色鉴权。
-- 将占位 Entity 替换为 `V001__init.sql` 对应的真实表实体。
-- 按 D4-D5 接口草案实现各模块 Controller 和 Service。
-- 增加 SQL Server 种子数据。
-- 增加 Postman/Apifox 接口测试集合。
-- 增加核心业务单元测试和订单状态机测试。
-- 增加 MinIO 图片上传接口。
-- 完成 WebSocket 聊天消息持久化和未读数。
-- 完成 Docker Compose app profile 的前后端联调验证。
-
-## 本机 SQL Server 自动初始化
-
-如果不使用 Docker 中的 SQL Server，而是使用自己电脑上安装的 SQL Server，并通过 SQL Server Management Studio 管理，可以使用脚本自动执行建库建表：
+默认推荐使用 Docker SQL Server。如果不使用 Docker 中的 SQL Server，而是使用自己电脑上安装的 SQL Server，并通过 SSMS 管理，可以使用脚本自动执行建库建表：
 
 ```powershell
 .\scripts\init-local-sqlserver.ps1 -ServerInstance "localhost"
 ```
 
-如果是 SQL Server Express，实例名通常是：
+SQL Server Express 常见实例名：
 
 ```powershell
 .\scripts\init-local-sqlserver.ps1 -ServerInstance ".\SQLEXPRESS"
@@ -291,59 +338,16 @@ git switch -c feature/user-credit
 .\scripts\init-local-sqlserver.ps1 -ServerInstance "localhost" -SqlAuth -Username "sa" -Password "YourStrong!Passw0rd"
 ```
 
-脚本会自动查找 `sqlcmd`，并执行：
+本机 SQL Server 方案需要自己同步后端的 `DB_URL`，课程项目默认不走这条路线。
 
-```text
-db/migrations/V001__init.sql
-```
+## 当前 TODO
 
-如果提示找不到 `sqlcmd`，说明本机只安装了 SSMS，但没有安装 SQL Server 命令行工具。可以改用 SSMS 手动打开并执行 `db/migrations/V001__init.sql`，或安装 Microsoft SQL Server Command Line Utilities 后重新运行脚本。
-
-## Docker SQL Server 自动执行数据库脚本
-
-如果使用 Docker 中的 SQL Server，推荐直接启动默认服务：
-
-```powershell
-docker compose up -d
-```
-
-其中 `db-init` 服务会自动等待 `sqlserver` 就绪，然后按文件名顺序执行：
-
-```text
-db/migrations/*.sql
-db/seeds/*.sql
-```
-
-执行过的脚本会记录在数据库表：
-
-```text
-dbo.__schema_migrations
-```
-
-所以每个 `.sql` 文件默认只执行一次。后续如果要插入演示数据，可以新增文件：
-
-```text
-db/seeds/V001__demo_data.sql
-db/seeds/V002__more_products.sql
-```
-
-然后重新运行：
-
-```powershell
-docker compose up -d db-init
-```
-
-也可以手动触发一次数据库初始化：
-
-```powershell
-.\scripts\init-docker-db.ps1
-```
-
-如果想清空 Docker SQL Server 数据并从零重建，执行：
-
-```powershell
-docker compose down -v
-docker compose up -d
-```
-
-注意：`docker compose down -v` 会删除 SQL Server 和 MinIO 的 Docker 数据卷，本地容器里的数据库数据会被清空。
+- 实现真实注册、登录、JWT Filter 和角色鉴权。
+- 将占位 Entity 替换为 `V001__init.sql` 对应的真实表实体。
+- 按 D4-D5 接口草案实现各模块 Controller 和 Service。
+- 增加 SQL Server 种子数据。
+- 增加 Postman/Apifox 接口测试集合。
+- 增加核心业务单元测试和订单状态机测试。
+- 增加 MinIO 图片上传接口。
+- 完成 WebSocket 聊天消息持久化和未读数。
+- 完成 Docker Compose app profile 的前后端联调验证。
