@@ -318,6 +318,12 @@ git switch -c feature/user-credit
 - 前端管理端：商品审核、举报处理、用户管理、柜机配置、数据看板。
 - 测试部署数据：种子数据、接口测试集合、Docker 一键启动、演示脚本、k6。
 
+协作语言约定：
+
+- 提交信息、PR 描述、审计说明、交付总结、任务评论优先使用中文。
+- Git 提交信息可以保留英文类型前缀，但正文说明请写中文，例如 `feat: 完成商品发布接口`。
+- 后续 agent 请优先阅读根目录 `AGENTS.md`。
+
 ## 备用：使用本机 SQL Server
 
 默认推荐使用 Docker SQL Server。如果不使用 Docker 中的 SQL Server，而是使用自己电脑上安装的 SQL Server，并通过 SSMS 管理，可以使用脚本自动执行建库建表：
