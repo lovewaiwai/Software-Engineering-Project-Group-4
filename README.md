@@ -270,3 +270,31 @@ git switch -c feature/user-credit
 - 增加 MinIO 图片上传接口。
 - 完成 WebSocket 聊天消息持久化和未读数。
 - 完成 Docker Compose app profile 的前后端联调验证。
+
+## 本机 SQL Server 自动初始化
+
+如果不使用 Docker 中的 SQL Server，而是使用自己电脑上安装的 SQL Server，并通过 SQL Server Management Studio 管理，可以使用脚本自动执行建库建表：
+
+```powershell
+.\scripts\init-local-sqlserver.ps1 -ServerInstance "localhost"
+```
+
+如果是 SQL Server Express，实例名通常是：
+
+```powershell
+.\scripts\init-local-sqlserver.ps1 -ServerInstance ".\SQLEXPRESS"
+```
+
+如果使用 SQL Server 账号密码登录：
+
+```powershell
+.\scripts\init-local-sqlserver.ps1 -ServerInstance "localhost" -SqlAuth -Username "sa" -Password "YourStrong!Passw0rd"
+```
+
+脚本会自动查找 `sqlcmd`，并执行：
+
+```text
+db/migrations/V001__init.sql
+```
+
+如果提示找不到 `sqlcmd`，说明本机只安装了 SSMS，但没有安装 SQL Server 命令行工具。可以改用 SSMS 手动打开并执行 `db/migrations/V001__init.sql`，或安装 Microsoft SQL Server Command Line Utilities 后重新运行脚本。
