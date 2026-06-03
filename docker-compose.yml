@@ -11,10 +11,28 @@ services:
     volumes:
       - sqlserver-data:/var/opt/mssql
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -Q \"SELECT 1\" || exit 1"]
+      test: ["CMD-SHELL", "SQLCMD=/opt/mssql-tools18/bin/sqlcmd; [ -x $$SQLCMD ] || SQLCMD=/opt/mssql-tools/bin/sqlcmd; $$SQLCMD -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -Q \"SELECT 1\" || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 10
+
+  db-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: swapcampus-db-init
+    environment:
+      DB_HOST: sqlserver
+      DB_PORT: 1433
+      DB_NAME: SwapCampus
+      DB_USERNAME: sa
+      DB_PASSWORD: ${DB_PASSWORD:-YourStrong!Passw0rd}
+      DB_ROOT: /workspace/db
+    volumes:
+      - ./db:/workspace/db:ro
+      - ./infra/sqlserver/apply-all-sql.sh:/workspace/apply-all-sql.sh:ro
+    entrypoint: ["/bin/bash", "/workspace/apply-all-sql.sh"]
+    depends_on:
+      sqlserver:
+        condition: service_healthy
 
   minio:
     image: minio/minio:latest
@@ -45,8 +63,10 @@ services:
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
-      - sqlserver
-      - minio
+      db-init:
+        condition: service_completed_successfully
+      minio:
+        condition: service_started
 
   frontend:
     image: swapcampus-frontend:dev

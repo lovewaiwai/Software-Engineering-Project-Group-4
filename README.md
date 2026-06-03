@@ -298,3 +298,52 @@ db/migrations/V001__init.sql
 ```
 
 如果提示找不到 `sqlcmd`，说明本机只安装了 SSMS，但没有安装 SQL Server 命令行工具。可以改用 SSMS 手动打开并执行 `db/migrations/V001__init.sql`，或安装 Microsoft SQL Server Command Line Utilities 后重新运行脚本。
+
+## Docker SQL Server 自动执行数据库脚本
+
+如果使用 Docker 中的 SQL Server，推荐直接启动默认服务：
+
+```powershell
+docker compose up -d
+```
+
+其中 `db-init` 服务会自动等待 `sqlserver` 就绪，然后按文件名顺序执行：
+
+```text
+db/migrations/*.sql
+db/seeds/*.sql
+```
+
+执行过的脚本会记录在数据库表：
+
+```text
+dbo.__schema_migrations
+```
+
+所以每个 `.sql` 文件默认只执行一次。后续如果要插入演示数据，可以新增文件：
+
+```text
+db/seeds/V001__demo_data.sql
+db/seeds/V002__more_products.sql
+```
+
+然后重新运行：
+
+```powershell
+docker compose up -d db-init
+```
+
+也可以手动触发一次数据库初始化：
+
+```powershell
+.\scripts\init-docker-db.ps1
+```
+
+如果想清空 Docker SQL Server 数据并从零重建，执行：
+
+```powershell
+docker compose down -v
+docker compose up -d
+```
+
+注意：`docker compose down -v` 会删除 SQL Server 和 MinIO 的 Docker 数据卷，本地容器里的数据库数据会被清空。
