@@ -1,6 +1,10 @@
 package com.swapcampus.common.api;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.swapcampus.common.exception.ErrorCode;
+
+import java.util.Collections;
 
 public class ApiResponse<T> {
 
@@ -44,11 +48,17 @@ public class ApiResponse<T> {
         this.message = message;
     }
 
+    @JsonIgnore
     public T getData() {
         return data;
     }
 
     public void setData(T data) {
         this.data = data;
+    }
+
+    @JsonProperty("data")
+    public Object getResponseData() {
+        return data == null ? Collections.emptyMap() : data;
     }
 }
