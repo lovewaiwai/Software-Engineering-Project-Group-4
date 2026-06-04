@@ -7,6 +7,11 @@ GO
 USE SwapCampus;
 GO
 
+SET ANSI_NULLS ON;
+GO
+SET QUOTED_IDENTIFIER ON;
+GO
+
 CREATE TABLE users (
   id BIGINT IDENTITY(1,1) PRIMARY KEY,
   username NVARCHAR(50) NOT NULL UNIQUE,
@@ -25,7 +30,7 @@ CREATE TABLE users (
 CREATE TABLE user_profiles (
   user_id BIGINT PRIMARY KEY,
   real_name NVARCHAR(50) NULL,
-  student_no NVARCHAR(30) NULL UNIQUE,
+  student_no NVARCHAR(30) NULL,
   college NVARCHAR(80) NULL,
   grade NVARCHAR(20) NULL,
   avatar_url NVARCHAR(500) NULL,
@@ -314,4 +319,5 @@ CREATE INDEX idx_orders_buyer ON orders(buyer_id, created_at);
 CREATE INDEX idx_orders_seller ON orders(seller_id, created_at);
 CREATE INDEX idx_chat_messages_session ON chat_messages(session_id, created_at);
 CREATE INDEX idx_browse_records_user ON browse_records(user_id, created_at);
+CREATE UNIQUE INDEX ux_user_profiles_student_no_not_null ON user_profiles(student_no) WHERE student_no IS NOT NULL;
 GO
