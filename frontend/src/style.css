@@ -1,0 +1,139 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1f2937;
+  background: #f4f6f8;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.app-layout {
+  min-height: 100vh;
+}
+
+.app-sidebar {
+  border-right: 1px solid #dde3ea;
+  background: #ffffff;
+}
+
+.brand {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.nav-menu {
+  border-right: 0;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  border-bottom: 1px solid #dde3ea;
+  background: #ffffff;
+}
+
+.app-main {
+  padding: 24px;
+}
+
+.module-page {
+  max-width: 1100px;
+}
+
+.module-page__header {
+  margin-bottom: 20px;
+}
+
+.module-page__header h1,
+.auth-panel h1 {
+  margin: 4px 0 8px;
+  font-size: 28px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.module-page__header p,
+.auth-panel p {
+  margin: 0;
+  max-width: 760px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.eyebrow {
+  margin: 0;
+  color: #0f766e;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.todo-table {
+  margin-top: 16px;
+  border: 1px solid #dde3ea;
+}
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    linear-gradient(135deg, rgba(15, 118, 110, 0.12), rgba(37, 99, 235, 0.08)),
+    #f4f6f8;
+}
+
+.auth-panel {
+  width: min(100%, 420px);
+  padding: 28px;
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.full-width {
+  width: 100%;
+}
+
+.secondary-action {
+  margin: 10px 0 0;
+}
+
+@media (max-width: 760px) {
+  .app-layout {
+    display: block;
+  }
+
+  .app-sidebar {
+    width: 100% !important;
+  }
+
+  .app-header {
+    justify-content: flex-start;
+  }
+
+  .app-main {
+    padding: 16px;
+  }
+}

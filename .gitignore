@@ -14,3 +14,17 @@ Thumbs.db
 
 # Local workspace drafts that are not part of the initial docs push
 workspace/
+
+# Build artifacts and local dependencies
+backend/target/
+frontend/node_modules/
+frontend/dist/
+
+# Local environment overrides
+.env
+.env.*
+!.env.example
+
+# IDE/build cache
+.idea/
+.vscode/
