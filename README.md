@@ -30,7 +30,7 @@ docker compose up -d
 这条命令会自动启动：
 
 - `sqlserver`：Docker 中的 SQL Server 2022。
-- `db-init`：自动执行 `db/migrations/*.sql` 和 `db/seeds/*.sql`。
+- `db-init`：重建 `SwapCampus` 数据库，并自动执行 `db/migrations/*.sql` 和 `db/seeds/*.sql`。
 - `minio`：本地对象存储服务。
 
 启动后用 SSMS 连接 Docker 里的 SQL Server：
@@ -74,7 +74,7 @@ WebSocket 聊天占位: ws://localhost:8080/ws/chat
 
 ## 数据库脚本机制
 
-Docker 启动时会自动运行 `db-init` 服务。它会按文件名顺序执行：
+Docker 启动时会自动运行 `db-init` 服务。默认行为是先删除并重建 `SwapCampus` 数据库，再按文件名顺序执行：
 
 ```text
 db/migrations/*.sql
@@ -87,13 +87,13 @@ db/seeds/*.sql
 db/migrations/V001__init.sql
 ```
 
-执行记录会写入：
+这意味着每次执行下面命令都会清空 SQL Server 里的 `SwapCampus` 业务数据，然后重新建表和导入种子数据：
 
-```text
-SwapCampus.dbo.__schema_migrations
+```powershell
+docker compose up -d db-init
 ```
 
-所以同一个 `.sql` 文件默认只会执行一次。后续要加演示数据时，把 SQL 文件放到：
+后续要加演示数据时，把 SQL 文件放到：
 
 ```text
 db/seeds/
@@ -106,7 +106,7 @@ db/seeds/V001__demo_users.sql
 db/seeds/V002__demo_products.sql
 ```
 
-然后执行：
+然后重新执行：
 
 ```powershell
 docker compose up -d db-init
@@ -118,7 +118,7 @@ docker compose up -d db-init
 .\scripts\init-docker-db.ps1
 ```
 
-如果想清空 Docker 里的数据库并从零重建：
+如果想连 SQL Server 数据卷和 MinIO 数据卷一起清空：
 
 ```powershell
 docker compose down -v

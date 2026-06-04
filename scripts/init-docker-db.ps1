@@ -4,8 +4,8 @@ Applies SwapCampus SQL migrations and seed scripts to the Docker SQL Server.
 
 .DESCRIPTION
 Runs all .sql files from db/migrations and db/seeds against the SQL Server
-container. Applied files are tracked in dbo.__schema_migrations, so each file is
-run only once unless the database volume is reset.
+container. By default, the target database is dropped and recreated first, so
+each run starts from a clean local development database.
 
 .EXAMPLE
 .\scripts\init-docker-db.ps1
@@ -71,10 +71,19 @@ while ($true) {
 }
 
 $baseArgs = @("-S", "localhost", "-U", $Username, "-P", $Password, "-C", "-b")
+$databaseIdentifier = $Database.Replace("]", "]]")
+$databaseLiteral = $Database.Replace("'", "''")
 
-Write-Host "Ensuring database and migration history table exist..."
-Invoke-DockerSqlCmd -Arguments ($baseArgs + @("-Q", "IF DB_ID(N'$Database') IS NULL CREATE DATABASE [$Database];"))
-Invoke-DockerSqlCmd -Arguments ($baseArgs + @("-d", $Database, "-Q", "IF OBJECT_ID(N'dbo.__schema_migrations', N'U') IS NULL CREATE TABLE dbo.__schema_migrations (script_name NVARCHAR(260) NOT NULL PRIMARY KEY, applied_at DATETIME2(0) NOT NULL DEFAULT SYSDATETIME());"))
+Write-Host "Resetting database '$Database'; existing local data will be removed."
+$resetSql = @"
+IF DB_ID(N'$databaseLiteral') IS NOT NULL
+BEGIN
+  ALTER DATABASE [$databaseIdentifier] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+  DROP DATABASE [$databaseIdentifier];
+END;
+CREATE DATABASE [$databaseIdentifier];
+"@
+Invoke-DockerSqlCmd -Arguments ($baseArgs + @("-d", "master", "-Q", $resetSql))
 
 $sqlFiles = @()
 $migrationDir = Join-Path $DbRoot "migrations"
@@ -94,32 +103,12 @@ if (-not $sqlFiles) {
 
 foreach ($file in $sqlFiles) {
     $relativeName = [IO.Path]::GetRelativePath($DbRoot, $file.FullName).Replace("\", "/")
-    $escapedName = $relativeName.Replace("'", "''")
-    $countOutput = docker exec $ContainerName /opt/mssql-tools18/bin/sqlcmd -S localhost -U $Username -P $Password -C -d $Database -h -1 -W -Q "SET NOCOUNT ON; SELECT COUNT(1) FROM dbo.__schema_migrations WHERE script_name = N'$escapedName';"
-    $alreadyApplied = ($countOutput -join "").Trim()
-
-    if ($alreadyApplied -eq "1") {
-        Write-Host "Skipping already applied script: $relativeName"
-        continue
-    }
-
-    if ($relativeName -eq "migrations/V001__init.sql") {
-        $coreTableOutput = docker exec $ContainerName /opt/mssql-tools18/bin/sqlcmd -S localhost -U $Username -P $Password -C -d $Database -h -1 -W -Q "SET NOCOUNT ON; SELECT COUNT(1) FROM sys.tables WHERE name IN (N'users', N'products', N'orders', N'audit_logs');"
-        $existingCoreTables = ($coreTableOutput -join "").Trim()
-        if ($existingCoreTables -ne "0") {
-            Write-Host "Core tables already exist; recording $relativeName as applied."
-            Invoke-DockerSqlCmd -Arguments ($baseArgs + @("-d", $Database, "-Q", "INSERT INTO dbo.__schema_migrations (script_name) VALUES (N'$escapedName');"))
-            continue
-        }
-    }
-
     $containerPath = "/tmp/swapcampus-sql/" + ($relativeName -replace "[/\\]", "_")
     docker exec $ContainerName mkdir -p /tmp/swapcampus-sql
     docker cp $file.FullName "${ContainerName}:$containerPath"
 
     Write-Host "Applying SQL script: $relativeName"
     Invoke-DockerSqlCmd -Arguments ($baseArgs + @("-i", $containerPath))
-    Invoke-DockerSqlCmd -Arguments ($baseArgs + @("-d", $Database, "-Q", "INSERT INTO dbo.__schema_migrations (script_name) VALUES (N'$escapedName');"))
 }
 
-Write-Host "All pending SQL scripts have been applied."
+Write-Host "All SQL scripts have been applied."
