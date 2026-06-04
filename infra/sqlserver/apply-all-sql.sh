@@ -42,9 +42,18 @@ for attempt in {1..60}; do
   sleep 2
 done
 
-echo "Ensuring database and migration history table exist..."
-"${SQLCMD}" "${SQLCMD_BASE[@]}" -Q "IF DB_ID(N'${DB_NAME}') IS NULL CREATE DATABASE [${DB_NAME}];"
-"${SQLCMD}" "${SQLCMD_BASE[@]}" -d "${DB_NAME}" -Q "IF OBJECT_ID(N'dbo.__schema_migrations', N'U') IS NULL CREATE TABLE dbo.__schema_migrations (script_name NVARCHAR(260) NOT NULL PRIMARY KEY, applied_at DATETIME2(0) NOT NULL DEFAULT SYSDATETIME());"
+DB_NAME_IDENTIFIER="${DB_NAME//]/]]}"
+DB_NAME_LITERAL="${DB_NAME//\'/\'\'}"
+
+echo "Resetting database ${DB_NAME}; existing local data will be removed."
+"${SQLCMD}" "${SQLCMD_BASE[@]}" -d master -Q "
+IF DB_ID(N'${DB_NAME_LITERAL}') IS NOT NULL
+BEGIN
+  ALTER DATABASE [${DB_NAME_IDENTIFIER}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+  DROP DATABASE [${DB_NAME_IDENTIFIER}];
+END;
+CREATE DATABASE [${DB_NAME_IDENTIFIER}];
+"
 
 mapfile -t SQL_FILES < <(
   {
@@ -60,26 +69,8 @@ fi
 
 for file in "${SQL_FILES[@]}"; do
   relative_name="${file#${DB_ROOT}/}"
-  escaped_name="${relative_name//\'/\'\'}"
-  already_applied="$("${SQLCMD}" "${SQLCMD_BASE[@]}" -d "${DB_NAME}" -h -1 -W -Q "SET NOCOUNT ON; SELECT COUNT(1) FROM dbo.__schema_migrations WHERE script_name = N'${escaped_name}';" | tr -d '[:space:]')"
-
-  if [[ "${already_applied}" == "1" ]]; then
-    echo "Skipping already applied script: ${relative_name}"
-    continue
-  fi
-
-  if [[ "${relative_name}" == "migrations/V001__init.sql" ]]; then
-    existing_core_tables="$("${SQLCMD}" "${SQLCMD_BASE[@]}" -d "${DB_NAME}" -h -1 -W -Q "SET NOCOUNT ON; SELECT COUNT(1) FROM sys.tables WHERE name IN (N'users', N'products', N'orders', N'audit_logs');" | tr -d '[:space:]')"
-    if [[ "${existing_core_tables}" != "0" ]]; then
-      echo "Core tables already exist; recording ${relative_name} as applied."
-      "${SQLCMD}" "${SQLCMD_BASE[@]}" -d "${DB_NAME}" -Q "INSERT INTO dbo.__schema_migrations (script_name) VALUES (N'${escaped_name}');"
-      continue
-    fi
-  fi
-
   echo "Applying SQL script: ${relative_name}"
   "${SQLCMD}" "${SQLCMD_BASE[@]}" -i "${file}"
-  "${SQLCMD}" "${SQLCMD_BASE[@]}" -d "${DB_NAME}" -Q "INSERT INTO dbo.__schema_migrations (script_name) VALUES (N'${escaped_name}');"
 done
 
-echo "All pending SQL scripts have been applied."
+echo "All SQL scripts have been applied."
