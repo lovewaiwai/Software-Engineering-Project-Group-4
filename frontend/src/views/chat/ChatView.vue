@@ -116,7 +116,7 @@
 
     <main v-else class="chat-empty">
       <el-empty description="选择左侧会话，或从商品详情页联系卖家">
-        <el-button type="primary" @click="$router.push('/products/3')">去商品页联系卖家</el-button>
+        <el-button type="primary" @click="$router.push('/products')">去商品列表联系卖家</el-button>
       </el-empty>
     </main>
 

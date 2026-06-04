@@ -46,6 +46,10 @@ async function contactSeller() {
     }
     return
   }
+  if (auth.isAdmin) {
+    ElMessage.warning('管理员账号不参与用户聊天，请使用普通用户账号联系卖家')
+    return
+  }
 
   try {
     const session = await openOrCreateSession(sellerId.value, Number(props.id))

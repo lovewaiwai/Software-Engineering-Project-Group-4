@@ -15,15 +15,15 @@
           <el-icon><Tickets /></el-icon>
           <span>Orders</span>
         </el-menu-item>
-        <el-menu-item index="/chat">
+        <el-menu-item v-if="!auth.isAdmin" index="/chat">
           <el-icon><ChatDotRound /></el-icon>
           <span>Chat</span>
         </el-menu-item>
-        <el-menu-item index="/verify">
+        <el-menu-item v-if="!auth.isAdmin" index="/verify">
           <el-icon><User /></el-icon>
           <span>学生认证</span>
         </el-menu-item>
-        <el-menu-item index="/points">
+        <el-menu-item v-if="!auth.isAdmin" index="/points">
           <el-icon><Coin /></el-icon>
           <span>Points</span>
         </el-menu-item>
@@ -31,7 +31,7 @@
     </el-aside>
     <el-container>
       <el-header class="app-header">
-        <el-button type="primary" @click="$router.push('/products/new')">发布</el-button>
+        <el-button v-if="!auth.isAdmin" type="primary" @click="$router.push('/products/new')">发布</el-button>
         <el-button v-if="!auth.isLoggedIn" @click="$router.push('/login')">登录</el-button>
         <el-dropdown v-else trigger="click" @command="handleCommand">
           <span class="user-entry">
@@ -40,9 +40,10 @@
           </span>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item v-if="auth.userId" :command="`/profile/${auth.userId}`">个人主页</el-dropdown-item>
-              <el-dropdown-item command="/points">积分中心</el-dropdown-item>
-              <el-dropdown-item command="/verify">学生认证</el-dropdown-item>
+              <el-dropdown-item v-if="auth.userId && !auth.isAdmin" :command="`/profile/${auth.userId}`">个人主页</el-dropdown-item>
+              <el-dropdown-item v-if="!auth.isAdmin" command="/points">积分中心</el-dropdown-item>
+              <el-dropdown-item v-if="!auth.isAdmin" command="/verify">学生认证</el-dropdown-item>
+              <el-dropdown-item v-if="auth.isAdmin" command="/admin">审核后台</el-dropdown-item>
               <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
