@@ -20,9 +20,13 @@ public class SecurityErrorResponseWriter {
     }
 
     public void write(HttpServletResponse response, int httpStatus, ErrorCode errorCode) throws IOException {
+        write(response, httpStatus, errorCode, errorCode.getMessage());
+    }
+
+    public void write(HttpServletResponse response, int httpStatus, ErrorCode errorCode, String message) throws IOException {
         response.setStatus(httpStatus);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(response.getWriter(), ApiResponse.fail(errorCode));
+        objectMapper.writeValue(response.getWriter(), ApiResponse.fail(errorCode.getCode(), message));
     }
 }

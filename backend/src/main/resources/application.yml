@@ -6,7 +6,7 @@ spring:
     name: swapcampus-backend
   datasource:
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
-    url: ${DB_URL:jdbc:sqlserver://localhost:1433;databaseName=SwapCampus;encrypt=true;trustServerCertificate=true}
+    url: ${DB_URL:jdbc:sqlserver://localhost:11433;databaseName=SwapCampus;encrypt=true;trustServerCertificate=true}
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:YourStrong!Passw0rd}
   jackson:
@@ -30,12 +30,16 @@ springdoc:
     path: /v3/api-docs
 
 swapcampus:
+  upload:
+    dir: ${UPLOAD_DIR:uploads}
   jwt:
     issuer: SwapCampus
     secret: ${JWT_SECRET:SwapCampusDevelopmentSecretKeyForJwtChangeMe123456}
     expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
   minio:
     endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+    public-endpoint: ${MINIO_PUBLIC_ENDPOINT:http://localhost:9000}
     access-key: ${MINIO_ACCESS_KEY:minioadmin}
     secret-key: ${MINIO_SECRET_KEY:minioadmin}
     bucket: ${MINIO_BUCKET:swapcampus}
+    chat-prefix: ${MINIO_CHAT_PREFIX:chat}

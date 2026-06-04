@@ -1,14 +1,22 @@
 package com.swapcampus.report.controller;
 
 import com.swapcampus.common.api.ApiResponse;
+import com.swapcampus.common.security.CurrentUserContext;
+import com.swapcampus.report.dto.CreateReportRequest;
 import com.swapcampus.report.service.ReportService;
 import com.swapcampus.report.vo.ReportResponse;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
-@RequestMapping("/api/report")
+@RequestMapping("/api/reports")
 public class ReportController {
 
     private final ReportService reportService;
@@ -18,7 +26,19 @@ public class ReportController {
     }
 
     @GetMapping("/health")
-    public ApiResponse<ReportResponse> health() {
-        return ApiResponse.ok(ReportResponse.placeholder(reportService.moduleName()));
+    public ApiResponse<Map<String, String>> health() {
+        return ApiResponse.ok(Map.of("module", reportService.moduleName(), "status", "ok"));
+    }
+
+    @PostMapping
+    public ApiResponse<ReportResponse> createReport(@Valid @RequestBody CreateReportRequest request) {
+        Long userId = CurrentUserContext.requireUserId();
+        return ApiResponse.ok(reportService.createReport(userId, request));
+    }
+
+    @GetMapping("/mine")
+    public ApiResponse<List<ReportResponse>> listMyReports() {
+        Long userId = CurrentUserContext.requireUserId();
+        return ApiResponse.ok(reportService.listMyReports(userId));
     }
 }

@@ -15,6 +15,7 @@ import com.swapcampus.user.entity.UserEntity;
 import com.swapcampus.user.entity.UserProfileEntity;
 import com.swapcampus.user.mapper.UserMapper;
 import com.swapcampus.user.mapper.UserProfileMapper;
+import com.swapcampus.user.service.UserAccountGuard;
 import com.swapcampus.user.vo.UserResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -56,7 +57,10 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "用户名已存在");
         }
 
-        Role role = request.getRole() == null ? Role.USER : request.getRole();
+        Role role = Role.USER;
+        if (request.getRole() != null && request.getRole() != Role.USER) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "不允许自助注册管理员账号");
+        }
         UserEntity user = new UserEntity();
         user.setUsername(username);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
@@ -86,7 +90,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "用户名或密码错误");
         }
         if (UserStatus.BANNED.equals(user.getStatus())) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "账号已被封禁");
+            throw new BusinessException(ErrorCode.FORBIDDEN, UserAccountGuard.BANNED_MESSAGE);
         }
 
         UserProfileEntity profile = userProfileMapper.selectById(user.getId());
