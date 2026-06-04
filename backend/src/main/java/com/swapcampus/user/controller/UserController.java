@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/user")
+@RequestMapping("/api/users")
 public class UserController {
 
     private final UserService userService;
@@ -20,5 +20,10 @@ public class UserController {
     @GetMapping("/health")
     public ApiResponse<UserResponse> health() {
         return ApiResponse.ok(UserResponse.placeholder(userService.moduleName()));
+    }
+
+    @GetMapping("/me")
+    public ApiResponse<UserResponse> me() {
+        return ApiResponse.ok(userService.getCurrentUser());
     }
 }

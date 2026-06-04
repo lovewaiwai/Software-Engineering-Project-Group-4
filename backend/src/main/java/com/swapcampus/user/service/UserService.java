@@ -1,9 +1,12 @@
 package com.swapcampus.user.service;
 
+import com.swapcampus.user.vo.UserResponse;
+
 public interface UserService {
 
-    /**
-     * TODO: Replace this scaffold method with user application services.
-     */
     String moduleName();
+
+    UserResponse getCurrentUser();
+
+    UserResponse getUserById(Long userId);
 }

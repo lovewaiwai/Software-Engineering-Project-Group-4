@@ -178,6 +178,30 @@ password: YourStrong!Passw0rd
 $env:DB_URL="jdbc:sqlserver://localhost:11433;databaseName=SwapCampus;encrypt=true;trustServerCertificate=true"
 ```
 
+后端鉴权已接入最小闭环：
+
+```text
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/logout
+GET  /api/users/me
+```
+
+注册和登录成功后会返回 `tokenType: Bearer`、`token` 和基础用户信息。调用受保护接口时在请求头携带：
+
+```text
+Authorization: Bearer <token>
+```
+
+Swagger UI 支持 Bearer Token 认证，打开 `http://localhost:8080/swagger-ui.html` 后点击 Authorize，填入登录接口返回的 JWT 即可调试受保护接口。
+
+开发环境 CORS 已允许前端 `http://localhost:5173` 和 `http://127.0.0.1:5173` 调用后端。JWT 可通过环境变量覆盖：
+
+```powershell
+$env:JWT_SECRET="长度足够的本地开发密钥"
+$env:JWT_EXPIRATION_MINUTES="120"
+```
+
 后端检查：
 
 ```powershell
@@ -280,12 +304,13 @@ enums/
 - `ErrorCode`：基础错误码。
 - `BusinessException` 和 `GlobalExceptionHandler`：业务异常与全局异常处理。
 - `JwtTokenProvider`：JWT 生成和解析工具。
-- `SecurityConfig`：Spring Security 基础配置。
+- `JwtAuthenticationFilter` 和 `CurrentUserContext`：Bearer Token 解析与当前用户上下文。
+- `SecurityConfig`：Spring Security、CORS、统一认证失败响应配置。
 - `MybatisPlusConfig`：MyBatis-Plus 分页配置。
-- `OpenApiConfig`：Swagger/OpenAPI 配置。
+- `OpenApiConfig`：Swagger/OpenAPI 与 Bearer Token 认证配置。
 - `WebSocketConfig` 和 `ChatWebSocketHandler`：聊天 WebSocket 占位。
 - `MinioProperties`：MinIO 配置占位。
-- `AuditLogService`：审计日志服务占位。
+- `AuditLogService`：审计日志公共写入服务，当前提供 `record(operatorId, action, targetType, targetId, detail)`。
 
 ## Mock Adapter 定位
 
@@ -348,8 +373,9 @@ SQL Server Express 常见实例名：
 
 ## 当前 TODO
 
-- 实现真实注册、登录、JWT Filter 和角色鉴权。
-- 将占位 Entity 替换为 `V001__init.sql` 对应的真实表实体。
+- Agent A 后续可补充基于方法注解的角色权限矩阵，例如后台接口限制 `ADMIN` / `SYS_ADMIN`。
+- MyBatis-Plus 当前依赖 SQL Server 默认值写入 `created_at`、`updated_at`，后续如需要统一更新时间，可补简单 `MetaObjectHandler`。
+- `users`、`user_profiles`、`audit_logs` 已替换为真实表实体；其他业务模块占位 Entity 仍需按各自 Agent 任务替换。
 - 按 D4-D5 接口草案实现各模块 Controller 和 Service。
 - 增加 SQL Server 种子数据。
 - 增加 Postman/Apifox 接口测试集合。
