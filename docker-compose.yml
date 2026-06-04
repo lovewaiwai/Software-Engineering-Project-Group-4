@@ -57,6 +57,7 @@ services:
       DB_USERNAME: sa
       DB_PASSWORD: ${DB_PASSWORD:-YourStrong!Passw0rd}
       MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: http://localhost:${MINIO_API_PORT:-9000}
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
       MINIO_BUCKET: swapcampus
