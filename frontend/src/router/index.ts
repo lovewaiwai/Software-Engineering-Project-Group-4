@@ -33,8 +33,8 @@ const routes: RouteRecordRaw[] = [
       { path: 'orders', component: OrderListView },
       { path: 'orders/:id', component: OrderDetailView, props: true },
       { path: 'chat', component: ChatView, meta: { requiresAuth: true, requiresUser: true } },
-      { path: 'profile/:id', component: ProfileView, props: true },
-      { path: 'points', component: PointsView },
+      { path: 'profile/:id', component: ProfileView, props: true, meta: { requiresAuth: true } },
+      { path: 'points', component: PointsView, meta: { requiresAuth: true, requiresUser: true } },
     ],
   },
   {

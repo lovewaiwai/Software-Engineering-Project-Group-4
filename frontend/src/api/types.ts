@@ -4,22 +4,40 @@ export interface ApiResponse<T> {
   data: T
 }
 
+export interface PageResponse<T> {
+  items: T[]
+  page: number
+  pageSize: number
+  total: number
+}
+
 export interface ModuleHealth {
   module: string
   status: string
 }
 
+export interface UserProfile {
+  realName?: string
+  studentNo?: string
+  college?: string
+  grade?: string
+  avatarUrl?: string
+  bio?: string
+  verifiedAt?: string
+  contactMasked?: string
+}
+
 export interface UserInfo {
   id: number
   username: string
+  phone?: string
+  email?: string
   role: string
-  profile?: {
-    realName?: string
-    studentNo?: string
-    college?: string
-    grade?: string
-    verifiedAt?: string
-  }
+  status?: string
+  creditScore?: number
+  pointBalance?: number
+  createdAt?: string
+  profile?: UserProfile
 }
 
 export interface AuthResponse {
@@ -93,4 +111,52 @@ export interface AdminUserSummary {
   muted: boolean
   mutedUntil?: string
   creditScore?: number
+}
+
+export interface CreditRecord {
+  id: number
+  delta: number
+  scoreAfter: number
+  reason: string
+  refType?: string
+  refId?: number
+  createdAt: string
+}
+
+export interface PointTask {
+  id: number
+  code: string
+  name: string
+  rewardPoints: number
+  taskType: string
+  status: string
+  claimed: boolean
+  claimable: boolean
+}
+
+export interface PointRecord {
+  id: number
+  delta: number
+  balanceAfter: number
+  reason: string
+  refType?: string
+  refId?: number
+  createdAt: string
+}
+
+export interface PointItem {
+  itemCode: string
+  itemName: string
+  costPoints: number
+  description?: string
+}
+
+export interface PointRedemption {
+  id: number
+  itemCode: string
+  itemName: string
+  costPoints: number
+  status: string
+  balanceAfter: number
+  createdAt: string
 }

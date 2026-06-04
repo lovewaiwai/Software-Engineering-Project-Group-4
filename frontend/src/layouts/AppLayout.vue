@@ -41,6 +41,7 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item v-if="auth.userId" :command="`/profile/${auth.userId}`">个人主页</el-dropdown-item>
+              <el-dropdown-item command="/points">积分中心</el-dropdown-item>
               <el-dropdown-item command="/verify">学生认证</el-dropdown-item>
               <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
