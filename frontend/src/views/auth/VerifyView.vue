@@ -5,45 +5,32 @@
       <h1>学生认证</h1>
 
       <div v-if="!auth.isLoggedIn" class="login-prompt">
-        <el-alert
-          title="请先登录后再进行学生认证"
-          type="info"
-          :closable="false"
-          show-icon
-        />
+        <el-alert title="请先登录后再进行学生认证" type="info" :closable="false" show-icon />
         <el-button type="primary" class="full-width" @click="goLogin">去登录</el-button>
       </div>
 
-      <template v-else>
-        <el-alert
-          v-if="verified"
-          title="您已完成学生认证"
-          type="success"
-          :closable="false"
-          show-icon
-          class="status-alert"
-        />
-        <el-form v-else label-position="top" @submit.prevent="handleSubmit">
-          <el-form-item label="学号">
-            <el-input v-model="studentNo" placeholder="例如 2026000001" maxlength="12" />
-          </el-form-item>
-          <el-form-item label="真实姓名">
-            <el-input v-model="realName" placeholder="请输入姓名" />
-          </el-form-item>
-          <el-form-item label="学院">
-            <el-select v-model="college" placeholder="请选择学院" style="width: 100%">
-              <el-option label="计算机学院" value="计算机学院" />
-              <el-option label="经济管理学院" value="经济管理学院" />
-              <el-option label="林学院" value="林学院" />
-              <el-option label="工学院" value="工学院" />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="年级（可选）">
-            <el-input v-model="grade" placeholder="例如 2022" />
-          </el-form-item>
-          <el-button type="primary" class="full-width" native-type="submit" :loading="loading">提交认证</el-button>
-        </el-form>
-      </template>
+      <el-form v-else label-position="top" @submit.prevent="handleSubmit">
+        <el-form-item label="学号">
+          <el-input v-model="studentNo" placeholder="例如 20260001" maxlength="12" />
+        </el-form-item>
+        <el-form-item label="真实姓名">
+          <el-input v-model="realName" placeholder="请输入姓名" />
+        </el-form-item>
+        <el-form-item label="学院">
+          <el-input v-model="college" placeholder="请输入学院" />
+        </el-form-item>
+        <el-form-item label="年级">
+          <el-select v-model="grade" placeholder="请选择年级" style="width: 100%" filterable>
+            <el-option
+              v-for="year in gradeOptions"
+              :key="year"
+              :label="String(year)"
+              :value="String(year)"
+            />
+          </el-select>
+        </el-form-item>
+        <el-button type="primary" class="full-width" native-type="submit" :loading="loading">提交认证</el-button>
+      </el-form>
 
       <el-button class="full-width secondary-action" native-type="button" @click="$router.push('/')">返回首页</el-button>
     </section>
@@ -51,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { fetchCurrentUser, verifyStudent } from '../../api/user'
@@ -65,50 +52,52 @@ const realName = ref('')
 const college = ref('')
 const grade = ref('')
 const loading = ref(false)
-const verified = ref(false)
 
-async function loadProfile() {
-  if (!auth.isLoggedIn) {
-    verified.value = false
-    return
+const currentYear = new Date().getFullYear()
+const gradeOptions = computed(() => {
+  const years: number[] = []
+  for (let y = currentYear; y >= 2000; y--) {
+    years.push(y)
   }
+  return years
+})
+
+onMounted(async () => {
+  if (!auth.isLoggedIn) return
   try {
     const response = await fetchCurrentUser()
-    if (response.code === 0 && response.data.profile?.verifiedAt) {
-      verified.value = true
+    if (response.code === 0 && response.data.profile) {
       studentNo.value = response.data.profile.studentNo ?? ''
       realName.value = response.data.profile.realName ?? ''
       college.value = response.data.profile.college ?? ''
+      grade.value = response.data.profile.grade ?? ''
     }
   } catch {
-    // ignore load failure, user can still submit
+    // ignore load failure
   }
-}
-
-onMounted(loadProfile)
-
-watch(
-  () => auth.isLoggedIn,
-  () => loadProfile(),
-)
+})
 
 function goLogin() {
   router.push({ path: '/login', query: { redirect: '/verify' } })
 }
 
 async function handleSubmit() {
+  if (!studentNo.value.trim()) { ElMessage.warning('请输入学号'); return }
+  if (!realName.value.trim()) { ElMessage.warning('请输入真实姓名'); return }
+  if (!college.value.trim()) { ElMessage.warning('请输入学院'); return }
+  if (!grade.value) { ElMessage.warning('请选择年级'); return }
+
   loading.value = true
   try {
     const response = await verifyStudent({
       studentNo: studentNo.value.trim(),
       realName: realName.value.trim(),
-      college: college.value,
-      grade: grade.value.trim() || undefined,
+      college: college.value.trim(),
+      grade: grade.value,
     })
     if (response.code !== 0) {
       throw new Error(response.message || '认证失败')
     }
-    verified.value = true
     auth.updateProfile(response.data.profile)
     ElMessage.success('学生认证成功')
     await router.push('/')
@@ -145,7 +134,6 @@ async function handleSubmit() {
 .secondary-action {
   margin-left: 0;
 }
-.status-alert,
 .login-prompt {
   margin-bottom: 16px;
 }

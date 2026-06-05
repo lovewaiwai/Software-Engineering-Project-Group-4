@@ -1,26 +1,18 @@
 <template>
   <section class="points-page">
     <div class="page-header">
-      <div>
-        <p class="eyebrow">Points</p>
-        <h1>积分中心</h1>
+      <div class="header-left">
+        <div>
+          <p class="eyebrow">Points</p>
+          <h1>积分中心</h1>
+        </div>
+        <div class="header-points">
+          <span class="metric-label">可用积分</span>
+          <strong>{{ currentUser?.pointBalance ?? 0 }}</strong>
+        </div>
       </div>
       <el-button :icon="Refresh" :loading="loading" @click="loadAll">刷新</el-button>
     </div>
-
-    <section class="balance-band">
-      <div>
-        <span class="metric-label">可用积分</span>
-        <strong>{{ currentUser?.pointBalance ?? 0 }}</strong>
-      </div>
-      <div>
-        <span class="metric-label">信用分</span>
-        <strong>{{ currentUser?.creditScore ?? 100 }}</strong>
-      </div>
-      <el-button type="primary" :icon="CircleCheck" :loading="actionLoading === 'DAILY_CHECK_IN'" @click="handleCheckIn">
-        今日签到
-      </el-button>
-    </section>
 
     <section class="task-grid">
       <el-card v-for="task in tasks" :key="task.code" shadow="never" class="task-card">
@@ -30,7 +22,7 @@
             <p>{{ task.taskType }}</p>
           </div>
           <el-tag :type="task.claimed ? 'info' : task.claimable ? 'success' : 'warning'">
-            {{ task.claimed ? '已领取' : task.claimable ? '可领取' : '待完成' }}
+            {{ claimLabel(task) }}
           </el-tag>
         </div>
         <div class="task-footer">
@@ -111,7 +103,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { CircleCheck, Refresh } from '@element-plus/icons-vue'
+import { Refresh } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   checkIn,
@@ -179,6 +171,13 @@ async function loadRecords() {
   }
 }
 
+function claimLabel(task: PointTask) {
+  if (!task.claimed) {
+    return task.claimable ? '可领取' : '待完成'
+  }
+  return task.code === 'DAILY_CHECK_IN' ? '今日已领取' : '已领取'
+}
+
 async function handleCheckIn() {
   await runAction('DAILY_CHECK_IN', async () => {
     const response = await checkIn()
@@ -188,6 +187,10 @@ async function handleCheckIn() {
 }
 
 async function handleClaim(code: string) {
+  if (code === 'DAILY_CHECK_IN') {
+    await handleCheckIn()
+    return
+  }
   await runAction(code, async () => {
     const response = await claimPointTask(code)
     if (response.code !== 0) throw new Error(response.message || '领取失败')
@@ -234,7 +237,7 @@ function formatDate(value?: string) {
   gap: 18px;
 }
 .page-header,
-.balance-band,
+.header-left,
 .task-main,
 .task-footer,
 .card-header {
@@ -247,6 +250,13 @@ function formatDate(value?: string) {
 .task-footer,
 .card-header {
   justify-content: space-between;
+}
+.header-left {
+  gap: 28px;
+}
+.header-points {
+  padding-left: 28px;
+  border-left: 1px solid #e5e7eb;
 }
 .eyebrow {
   margin: 0 0 4px;
@@ -263,23 +273,16 @@ h1,
 h2 {
   color: #111827;
 }
-.balance-band {
-  justify-content: space-between;
-  padding: 22px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #fff;
-}
 .metric-label {
   display: block;
   color: #64748b;
   font-size: 13px;
 }
-.balance-band strong {
+.header-points strong {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   color: #111827;
-  font-size: 30px;
+  font-size: 26px;
 }
 .task-grid {
   display: grid;
@@ -315,10 +318,18 @@ h2 {
   justify-content: flex-end;
 }
 @media (max-width: 980px) {
-  .balance-band,
   .page-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+  .header-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .header-points {
+    padding-left: 0;
+    border-left: none;
   }
   .content-grid {
     grid-template-columns: 1fr;

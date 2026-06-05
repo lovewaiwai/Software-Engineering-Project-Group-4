@@ -6,7 +6,7 @@ export async function login(username: string, password: string) {
   return data
 }
 
-export async function register(username: string, password: string, email?: string) {
-  const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/auth/register', { username, password, email })
+export async function register(username: string, password: string, phone?: string, email?: string) {
+  const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/auth/register', { username, password, phone, email })
   return data
 }
