@@ -8,4 +8,5 @@ public interface PaymentService {
     PaymentResponse queryPayment(Long paymentId);
     PaymentResponse mockCallback(String providerTradeNo);
     PaymentResponse refund(Long orderId);
+    PaymentResponse getByOrderId(Long orderId);
 }
