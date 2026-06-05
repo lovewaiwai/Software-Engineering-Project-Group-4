@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.UUID;
+import java.util.List;
 
 @Service
 public class PaymentServiceImpl implements PaymentService {
@@ -115,5 +116,15 @@ public class PaymentServiceImpl implements PaymentService {
         }
 
         return PaymentResponse.from(payment);
+    }
+
+    @Override
+    public PaymentResponse getByOrderId(Long orderId) {
+        LambdaQueryWrapper<PaymentEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PaymentEntity::getOrderId, orderId)
+                .orderByDesc(PaymentEntity::getCreatedAt);
+        List<PaymentEntity> list = paymentMapper.selectList(wrapper);
+        if (list.isEmpty()) return null;
+        return PaymentResponse.from(list.get(0));
     }
 }

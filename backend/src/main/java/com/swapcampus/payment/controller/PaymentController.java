@@ -36,4 +36,9 @@ public class PaymentController {
     public ApiResponse<PaymentResponse> refund(@PathVariable Long orderId) {
         return ApiResponse.ok(paymentService.refund(orderId));
     }
+
+    @GetMapping("/order/{orderId}")
+    public ApiResponse<PaymentResponse> getByOrderId(@PathVariable Long orderId) {
+        return ApiResponse.ok(paymentService.getByOrderId(orderId));
+    }
 }
