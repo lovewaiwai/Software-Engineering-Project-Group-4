@@ -9,18 +9,18 @@ import com.swapcampus.common.exception.BusinessException;
 import com.swapcampus.common.exception.ErrorCode;
 import com.swapcampus.common.security.CurrentUserContext;
 import com.swapcampus.points.dto.PointRedeemRequest;
-import com.swapcampus.points.entity.PointRecordEntity;
 import com.swapcampus.points.entity.PointRedemptionEntity;
 import com.swapcampus.points.entity.PointTaskEntity;
 import com.swapcampus.points.mapper.PointRecordMapper;
 import com.swapcampus.points.mapper.PointRedemptionMapper;
+import com.swapcampus.points.entity.PointRecordEntity;
+import com.swapcampus.user.entity.UserEntity;
 import com.swapcampus.points.mapper.PointTaskMapper;
 import com.swapcampus.points.service.PointService;
 import com.swapcampus.points.vo.PointItemResponse;
 import com.swapcampus.points.vo.PointRedemptionResponse;
 import com.swapcampus.points.vo.PointRecordResponse;
 import com.swapcampus.points.vo.PointTaskResponse;
-import com.swapcampus.user.entity.UserEntity;
 import com.swapcampus.user.entity.UserProfileEntity;
 import com.swapcampus.user.mapper.UserMapper;
 import com.swapcampus.user.mapper.UserProfileMapper;
@@ -53,7 +53,6 @@ public class PointServiceImpl implements PointService {
     private final UserMapper userMapper;
     private final UserProfileMapper userProfileMapper;
     private final AuditLogService auditLogService;
-
     public PointServiceImpl(PointTaskMapper pointTaskMapper,
                             PointRecordMapper pointRecordMapper,
                             PointRedemptionMapper pointRedemptionMapper,
@@ -64,8 +63,7 @@ public class PointServiceImpl implements PointService {
         this.pointRecordMapper = pointRecordMapper;
         this.pointRedemptionMapper = pointRedemptionMapper;
         this.userMapper = userMapper;
-        this.userProfileMapper = userProfileMapper;
-        this.auditLogService = auditLogService;
+        this.userProfileMapper = userProfileMapper;        this.auditLogService = auditLogService;
     }
 
     @Override

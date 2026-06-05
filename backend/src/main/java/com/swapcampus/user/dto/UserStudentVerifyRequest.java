@@ -17,6 +17,7 @@ public class UserStudentVerifyRequest {
     @Size(max = 80, message = "学院不能超过80个字符")
     private String college;
 
+    @NotBlank(message = "年级不能为空")
     @Size(max = 20, message = "年级不能超过20个字符")
     private String grade;
 

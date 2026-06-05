@@ -16,7 +16,7 @@
     <template v-else-if="user">
       <section class="summary-band">
         <div class="avatar-wrap">
-          <el-avatar :src="user.profile?.avatarUrl" :size="72">
+          <el-avatar :size="72">
             {{ displayInitial }}
           </el-avatar>
           <div>
@@ -45,10 +45,41 @@
       </section>
 
       <section class="content-grid">
+        <!-- 实名认证：只读 -->
         <el-card class="profile-card" shadow="never">
           <template #header>
             <div class="card-header">
-              <span>资料</span>
+              <span>实名认证</span>
+              <el-button
+                v-if="isOwnProfile && !user.profile?.verifiedAt"
+                type="primary"
+                @click="router.push('/verify')"
+              >
+                学生认证
+              </el-button>
+            </div>
+          </template>
+          <el-descriptions :column="1" border>
+            <el-descriptions-item label="真实姓名">
+              {{ user.profile?.realName || '未认证' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="学院">
+              {{ user.profile?.college || '未认证' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="年级">
+              {{ user.profile?.grade || '未认证' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="学号">
+              {{ user.profile?.studentNo || '未认证' }}
+            </el-descriptions-item>
+          </el-descriptions>
+        </el-card>
+
+        <!-- 账号信息：部分可编辑 -->
+        <el-card class="profile-card" shadow="never">
+          <template #header>
+            <div class="card-header">
+              <span>账号信息</span>
               <el-button v-if="isOwnProfile" type="primary" :icon="Edit" @click="editing = !editing">
                 {{ editing ? '收起' : '编辑' }}
               </el-button>
@@ -56,31 +87,27 @@
           </template>
 
           <el-descriptions v-if="!editing" :column="1" border>
-            <el-descriptions-item label="真实姓名">{{ user.profile?.realName || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="学院">{{ user.profile?.college || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="年级">{{ user.profile?.grade || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="学号">{{ user.profile?.studentNo || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="联系方式">{{ user.profile?.contactMasked || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="简介">{{ user.profile?.bio || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="用户名">{{ user.username }}</el-descriptions-item>
+            <el-descriptions-item label="角色">{{ user.role }}</el-descriptions-item>
+            <el-descriptions-item label="手机号">{{ user.phone || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="邮箱">{{ user.email || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="个人简介">{{ user.profile?.bio || '-' }}</el-descriptions-item>
           </el-descriptions>
 
           <el-form v-else label-position="top" class="profile-form" @submit.prevent="saveProfile">
-            <el-form-item label="真实姓名">
-              <el-input v-model="form.realName" maxlength="50" />
+            <el-form-item label="用户名">
+              <el-input :model-value="user.username" disabled />
             </el-form-item>
-            <el-form-item label="学院">
-              <el-input v-model="form.college" maxlength="80" />
+            <el-form-item label="角色">
+              <el-input :model-value="user.role" disabled />
             </el-form-item>
-            <el-form-item label="年级">
-              <el-input v-model="form.grade" maxlength="20" />
+            <el-form-item label="手机号" :error="phoneError">
+              <el-input v-model="form.phone" placeholder="请输入手机号" maxlength="11" />
             </el-form-item>
-            <el-form-item label="头像链接">
-              <el-input v-model="form.avatarUrl" maxlength="500" />
+            <el-form-item label="邮箱" :error="emailError">
+              <el-input v-model="form.email" placeholder="请输入邮箱" maxlength="100" />
             </el-form-item>
-            <el-form-item label="联系方式">
-              <el-input v-model="form.contactMasked" maxlength="100" />
-            </el-form-item>
-            <el-form-item label="简介">
+            <el-form-item label="个人简介">
               <el-input v-model="form.bio" type="textarea" maxlength="500" :rows="4" show-word-limit />
             </el-form-item>
             <div class="form-actions">
@@ -89,26 +116,9 @@
             </div>
           </el-form>
         </el-card>
-
-        <el-card class="profile-card" shadow="never">
-          <template #header>
-            <div class="card-header">
-              <span>账号</span>
-              <el-button v-if="isOwnProfile && !user.profile?.verifiedAt" @click="router.push('/verify')">
-                学生认证
-              </el-button>
-            </div>
-          </template>
-          <el-descriptions :column="1" border>
-            <el-descriptions-item label="用户名">{{ user.username }}</el-descriptions-item>
-            <el-descriptions-item label="邮箱">{{ user.email || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="手机号">{{ user.phone || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="角色">{{ user.role }}</el-descriptions-item>
-            <el-descriptions-item label="创建时间">{{ formatDate(user.createdAt) }}</el-descriptions-item>
-          </el-descriptions>
-        </el-card>
       </section>
 
+      <!-- 信用记录 -->
       <el-card v-if="isOwnProfile" class="records-card" shadow="never">
         <template #header>
           <div class="card-header">
@@ -174,14 +184,13 @@ const creditRecords = ref<CreditRecord[]>([])
 const creditPage = ref(1)
 const creditPageSize = 10
 const creditTotal = ref(0)
+const phoneError = ref('')
+const emailError = ref('')
 
-const form = reactive<UserProfileUpdatePayload>({
-  realName: '',
-  college: '',
-  grade: '',
-  avatarUrl: '',
+const form = reactive<UserProfileUpdatePayload & { phone: string; email: string; bio: string }>({
+  phone: '',
+  email: '',
   bio: '',
-  contactMasked: '',
 })
 
 const isOwnProfile = computed(() => auth.userId === Number(props.id))
@@ -236,31 +245,47 @@ async function loadCreditRecords() {
 }
 
 function resetForm() {
-  const profile = user.value?.profile
-  form.realName = profile?.realName ?? ''
-  form.college = profile?.college ?? ''
-  form.grade = profile?.grade ?? ''
-  form.avatarUrl = profile?.avatarUrl ?? ''
-  form.bio = profile?.bio ?? ''
-  form.contactMasked = profile?.contactMasked ?? ''
+  form.phone = user.value?.phone ?? ''
+  form.email = user.value?.email ?? ''
+  form.bio = user.value?.profile?.bio ?? ''
+  phoneError.value = ''
+  emailError.value = ''
+}
+
+function validateForm(): boolean {
+  let valid = true
+  phoneError.value = ''
+  emailError.value = ''
+
+  const phone = form.phone.trim()
+  if (phone && !/^1[3-9]\d{9}$/.test(phone)) {
+    phoneError.value = '手机号格式不正确'
+    valid = false
+  }
+
+  const email = form.email.trim()
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    emailError.value = '邮箱格式不正确'
+    valid = false
+  }
+
+  return valid
 }
 
 async function saveProfile() {
+  if (!validateForm()) return
+
   saving.value = true
   try {
     const response = await updateCurrentUserProfile({
-      realName: normalize(form.realName),
-      college: normalize(form.college),
-      grade: normalize(form.grade),
-      avatarUrl: normalize(form.avatarUrl),
+      phone: normalize(form.phone),
+      email: normalize(form.email),
       bio: normalize(form.bio),
-      contactMasked: normalize(form.contactMasked),
     })
     if (response.code !== 0) {
       throw new Error(response.message || '资料保存失败')
     }
     user.value = response.data
-    auth.updateProfile(response.data.profile)
     editing.value = false
     ElMessage.success('资料已保存')
   } catch (error) {
@@ -354,7 +379,7 @@ h2 {
 }
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  grid-template-columns: 1fr 1fr;
   gap: 18px;
 }
 .profile-card,

@@ -19,15 +19,7 @@
           <el-icon><ChatDotRound /></el-icon>
           <span>Chat</span>
         </el-menu-item>
-        <el-menu-item v-if="!auth.isAdmin" index="/verify">
-          <el-icon><User /></el-icon>
-          <span>学生认证</span>
-        </el-menu-item>
-        <el-menu-item v-if="!auth.isAdmin" index="/points">
-          <el-icon><Coin /></el-icon>
-          <span>Points</span>
-        </el-menu-item>
-      </el-menu>
+                      </el-menu>
     </el-aside>
     <el-container>
       <el-header class="app-header">
@@ -41,8 +33,8 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item v-if="auth.userId && !auth.isAdmin" :command="`/profile/${auth.userId}`">个人主页</el-dropdown-item>
+
               <el-dropdown-item v-if="!auth.isAdmin" command="/points">积分中心</el-dropdown-item>
-              <el-dropdown-item v-if="!auth.isAdmin" command="/verify">学生认证</el-dropdown-item>
               <el-dropdown-item v-if="auth.isAdmin" command="/admin">审核后台</el-dropdown-item>
               <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
             </el-dropdown-menu>
@@ -59,7 +51,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChatDotRound, Coin, Goods, House, Tickets, User } from '@element-plus/icons-vue'
+import { ChatDotRound, Goods, House, Tickets, User } from '@element-plus/icons-vue'
 import { fetchCurrentUser } from '../api/user'
 import { useAuthStore } from '../stores/auth'
 

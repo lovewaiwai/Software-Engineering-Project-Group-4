@@ -43,8 +43,8 @@ export const useAuthStore = defineStore('auth', {
       }
       this.applySession(response.data.token, response.data.user)
     },
-    async register(username: string, password: string, email?: string) {
-      const response = await registerApi(username, password, email)
+    async register(username: string, password: string, phone?: string, email?: string) {
+      const response = await registerApi(username, password, phone, email)
       if (response.code !== 0) {
         throw new Error(response.message || '注册失败')
       }

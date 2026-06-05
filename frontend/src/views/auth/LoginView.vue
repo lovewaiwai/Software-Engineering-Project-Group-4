@@ -3,7 +3,7 @@
     <section class="auth-panel">
       <p class="eyebrow">SwapCampus</p>
       <h1>登录</h1>
-      <p class="login-hint">普通用户可注册；审核员请使用专用账号登录，将自动进入审核后台。</p>
+      <p class="login-hint">管理员请使用专用账号登录，将自动进入管理后台。</p>
       <el-form label-position="top" @submit.prevent="handleLogin">
         <el-form-item label="用户名">
           <el-input v-model="username" placeholder="请输入用户名" />
@@ -12,8 +12,7 @@
           <el-input v-model="password" type="password" show-password placeholder="请输入密码" />
         </el-form-item>
         <el-button type="primary" class="full-width" native-type="submit" :loading="loading">登录</el-button>
-        <el-button class="full-width secondary-action" native-type="button" :loading="registerLoading" @click="handleRegister">注册账号</el-button>
-        <el-button class="full-width secondary-action" native-type="button" @click="goVerify">学生认证</el-button>
+        <el-button class="full-width secondary-action" native-type="button" @click="router.push('/register')">注册账号</el-button>
       </el-form>
     </section>
   </main>
@@ -40,7 +39,6 @@ function resolveRedirectPath() {
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
-const registerLoading = ref(false)
 
 onMounted(() => {
   if (route.query.banned === '1') {
@@ -59,32 +57,6 @@ async function handleLogin() {
     ElMessage.error(getApiErrorMessage(error, '登录失败'))
   } finally {
     loading.value = false
-  }
-}
-
-function goVerify() {
-  if (auth.isLoggedIn) {
-    router.push('/verify')
-    return
-  }
-  router.replace({ path: '/login', query: { redirect: '/verify' } })
-  ElMessage.info('请先登录，登录成功后将自动进入学生认证')
-}
-
-async function handleRegister() {
-  if (!username.value.trim() || !password.value) {
-    ElMessage.warning('请先填写用户名和密码')
-    return
-  }
-  registerLoading.value = true
-  try {
-    await auth.register(username.value.trim(), password.value)
-    ElMessage.success('注册成功，已自动登录')
-    await router.replace(resolveRedirectPath())
-  } catch (error) {
-    ElMessage.error(getApiErrorMessage(error, '注册失败'))
-  } finally {
-    registerLoading.value = false
   }
 }
 </script>
