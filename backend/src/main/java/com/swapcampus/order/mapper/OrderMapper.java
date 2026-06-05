@@ -6,5 +6,4 @@ import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
 public interface OrderMapper extends BaseMapper<OrderEntity> {
-    // TODO: Add order SQL Server queries when business tables are implemented.
 }

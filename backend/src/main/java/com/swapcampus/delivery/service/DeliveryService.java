@@ -1,9 +1,11 @@
 package com.swapcampus.delivery.service;
 
-public interface DeliveryService {
+import com.swapcampus.delivery.dto.DeliveryRequest;
+import com.swapcampus.delivery.vo.DeliveryResponse;
 
-    /**
-     * TODO: Replace this scaffold method with delivery application services.
-     */
-    String moduleName();
+public interface DeliveryService {
+    DeliveryResponse reserveLocker(DeliveryRequest request);
+    DeliveryResponse confirmStored(String taskNo);
+    DeliveryResponse confirmPickedUp(String taskNo, String pickupCode);
+    DeliveryResponse getByOrderId(Long orderId);
 }

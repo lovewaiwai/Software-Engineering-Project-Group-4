@@ -1,9 +1,11 @@
 package com.swapcampus.payment.service;
 
-public interface PaymentService {
+import com.swapcampus.payment.dto.PaymentRequest;
+import com.swapcampus.payment.vo.PaymentResponse;
 
-    /**
-     * TODO: Replace this scaffold method with payment application services.
-     */
-    String moduleName();
+public interface PaymentService {
+    PaymentResponse createPayment(PaymentRequest request);
+    PaymentResponse queryPayment(Long paymentId);
+    PaymentResponse mockCallback(String providerTradeNo);
+    PaymentResponse refund(Long orderId);
 }

@@ -6,5 +6,4 @@ import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
 public interface ReviewMapper extends BaseMapper<ReviewEntity> {
-    // TODO: Add review SQL Server queries when business tables are implemented.
 }

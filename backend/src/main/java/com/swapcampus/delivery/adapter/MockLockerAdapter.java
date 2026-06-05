@@ -12,7 +12,7 @@ public class MockLockerAdapter implements LockerAdapter {
 
     @Override
     public LockerReserveResult reserveBox(LockerReserveCommand command) {
-        String taskNo = "MOCK_LOCKER_" + UUID.randomUUID();
+        String taskNo = "LK" + UUID.randomUUID().toString().replace("-", "").substring(0, 16).toUpperCase();
         String pickupCode = String.valueOf(100000 + random.nextInt(900000));
         return new LockerReserveResult(taskNo, "Campus North Gate Locker", "M-" + random.nextInt(40), pickupCode, "locker-deposit://" + taskNo);
     }
