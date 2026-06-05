@@ -6,5 +6,4 @@ import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
 public interface ReportMapper extends BaseMapper<ReportEntity> {
-    // TODO: Add report SQL Server queries when business tables are implemented.
 }

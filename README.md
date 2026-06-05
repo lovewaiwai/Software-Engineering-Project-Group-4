@@ -18,10 +18,10 @@ SwapCampus 是面向校园师生的闲置物品交易平台。本仓库当前已
 ```powershell
 git clone https://github.com/lovewaiwai/Software-Engineering-Project-Group-4.git
 cd Software-Engineering-Project-Group-4
-git switch feature/project-code-scaffold
+git switch main
 ```
 
-启动基础设施：
+如果只想用 Docker 启动数据库和对象存储，后端与前端仍在本机运行：
 
 ```powershell
 docker compose up -d
@@ -32,6 +32,38 @@ docker compose up -d
 - `sqlserver`：Docker 中的 SQL Server 2022。
 - `db-init`：重建 `SwapCampus` 数据库，并自动执行 `db/migrations/*.sql` 和 `db/seeds/*.sql`。
 - `minio`：本地对象存储服务。
+
+如果想一键启动基础设施、后端和前端，全套都通过 Docker 运行：
+
+```powershell
+docker compose --profile app up -d --build
+```
+
+这条命令会启动：
+
+- `sqlserver`：SQL Server 数据库。
+- `db-init`：数据库初始化脚本。
+- `minio`：对象存储服务。
+- `backend`：Spring Boot 后端服务。
+- `frontend`：Vue 前端静态服务。
+
+查看容器状态：
+
+```powershell
+docker compose --profile app ps
+```
+
+查看日志：
+
+```powershell
+docker compose --profile app logs -f backend frontend
+```
+
+停止全套 Docker 服务：
+
+```powershell
+docker compose --profile app down
+```
 
 启动后用 SSMS 连接 Docker 里的 SQL Server：
 

@@ -1,16 +1,16 @@
 package com.swapcampus.common.storage;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
 
-@Configuration
 @ConfigurationProperties(prefix = "swapcampus.minio")
 public class MinioProperties {
 
     private String endpoint;
+    private String publicEndpoint;
     private String accessKey;
     private String secretKey;
     private String bucket;
+    private String chatPrefix = "chat";
 
     public String getEndpoint() {
         return endpoint;
@@ -18,6 +18,14 @@ public class MinioProperties {
 
     public void setEndpoint(String endpoint) {
         this.endpoint = endpoint;
+    }
+
+    public String getPublicEndpoint() {
+        return publicEndpoint;
+    }
+
+    public void setPublicEndpoint(String publicEndpoint) {
+        this.publicEndpoint = publicEndpoint;
     }
 
     public String getAccessKey() {
@@ -42,5 +50,13 @@ public class MinioProperties {
 
     public void setBucket(String bucket) {
         this.bucket = bucket;
+    }
+
+    public String getChatPrefix() {
+        return chatPrefix;
+    }
+
+    public void setChatPrefix(String chatPrefix) {
+        this.chatPrefix = chatPrefix;
     }
 }

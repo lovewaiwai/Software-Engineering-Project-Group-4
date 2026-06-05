@@ -1,5 +1,6 @@
 package com.swapcampus.common.config;
 
+import com.swapcampus.common.security.ActiveUserFilter;
 import com.swapcampus.common.security.JsonAccessDeniedHandler;
 import com.swapcampus.common.security.JsonAuthenticationEntryPoint;
 import com.swapcampus.common.security.JwtAuthenticationFilter;
@@ -7,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -24,15 +26,23 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final ActiveUserFilter activeUserFilter;
     private final JsonAuthenticationEntryPoint jsonAuthenticationEntryPoint;
     private final JsonAccessDeniedHandler jsonAccessDeniedHandler;
 
     public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          ActiveUserFilter activeUserFilter,
                           JsonAuthenticationEntryPoint jsonAuthenticationEntryPoint,
                           JsonAccessDeniedHandler jsonAccessDeniedHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.activeUserFilter = activeUserFilter;
         this.jsonAuthenticationEntryPoint = jsonAuthenticationEntryPoint;
         this.jsonAccessDeniedHandler = jsonAccessDeniedHandler;
+    }
+
+    @Bean
+    public WebSecurityCustomizer webSecurityCustomizer() {
+        return web -> web.ignoring().requestMatchers("/uploads/**");
     }
 
     @Bean
@@ -50,6 +60,7 @@ public class SecurityConfig {
                                 "/api/auth/**",
                                 "/api/*/health",
                                 "/ws/**",
+                                "/uploads/**",
                                 "/v3/api-docs/**",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**"
@@ -57,6 +68,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(activeUserFilter, JwtAuthenticationFilter.class)
                 .build();
     }
 
