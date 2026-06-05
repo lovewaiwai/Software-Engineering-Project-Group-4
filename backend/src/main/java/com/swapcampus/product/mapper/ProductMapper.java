@@ -6,5 +6,4 @@ import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
 public interface ProductMapper extends BaseMapper<ProductEntity> {
-    // TODO: Add product SQL Server queries when business tables are implemented.
 }

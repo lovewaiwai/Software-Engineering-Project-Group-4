@@ -1,5 +1,9 @@
 package com.swapcampus.payment.enums;
 
 public enum PaymentStatus {
-    TODO
+    CREATED,
+    SUCCESS,
+    FAILED,
+    REFUNDING,
+    REFUNDED
 }

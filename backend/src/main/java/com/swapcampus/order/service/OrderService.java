@@ -1,9 +1,13 @@
 package com.swapcampus.order.service;
 
-public interface OrderService {
+import com.swapcampus.order.dto.OrderRequest;
+import com.swapcampus.order.vo.OrderResponse;
+import java.util.List;
 
-    /**
-     * TODO: Replace this scaffold method with order application services.
-     */
-    String moduleName();
+public interface OrderService {
+    OrderResponse createOrder(OrderRequest request, Long buyerId);
+    OrderResponse getOrder(Long orderId, Long currentUserId);
+    List<OrderResponse> listMyOrders(Long currentUserId, String role);
+    OrderResponse cancelOrder(Long orderId, Long currentUserId);
+    OrderResponse confirmComplete(Long orderId, Long currentUserId);
 }

@@ -1,17 +1,12 @@
 package com.swapcampus.payment.dto;
 
+import jakarta.validation.constraints.NotNull;
+
 public class PaymentRequest {
 
-    /**
-     * TODO: Replace with request fields from D4-D5 API draft.
-     */
-    private String keyword;
+    @NotNull
+    private Long orderId;
 
-    public String getKeyword() {
-        return keyword;
-    }
-
-    public void setKeyword(String keyword) {
-        this.keyword = keyword;
-    }
+    public Long getOrderId() { return orderId; }
+    public void setOrderId(Long orderId) { this.orderId = orderId; }
 }

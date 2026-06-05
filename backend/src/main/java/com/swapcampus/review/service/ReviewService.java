@@ -1,9 +1,11 @@
 package com.swapcampus.review.service;
 
-public interface ReviewService {
+import com.swapcampus.review.dto.ReviewRequest;
+import com.swapcampus.review.vo.ReviewResponse;
+import java.util.List;
 
-    /**
-     * TODO: Replace this scaffold method with review application services.
-     */
-    String moduleName();
+public interface ReviewService {
+    ReviewResponse createReview(ReviewRequest request, Long reviewerId);
+    List<ReviewResponse> getReviewsByUser(Long userId);
+    List<ReviewResponse> getReviewsByOrder(Long orderId);
 }

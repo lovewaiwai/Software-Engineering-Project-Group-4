@@ -1,17 +1,21 @@
 package com.swapcampus.order.dto;
 
+import jakarta.validation.constraints.NotNull;
+
 public class OrderRequest {
 
-    /**
-     * TODO: Replace with request fields from D4-D5 API draft.
-     */
-    private String keyword;
+    @NotNull
+    private Long productId;
 
-    public String getKeyword() {
-        return keyword;
-    }
+    @NotNull
+    private String tradeMode; // MEETUP 或 LOCKER
 
-    public void setKeyword(String keyword) {
-        this.keyword = keyword;
-    }
+    private Long lockerStationId; // tradeMode=LOCKER 时必填
+
+    public Long getProductId() { return productId; }
+    public void setProductId(Long productId) { this.productId = productId; }
+    public String getTradeMode() { return tradeMode; }
+    public void setTradeMode(String tradeMode) { this.tradeMode = tradeMode; }
+    public Long getLockerStationId() { return lockerStationId; }
+    public void setLockerStationId(Long lockerStationId) { this.lockerStationId = lockerStationId; }
 }
