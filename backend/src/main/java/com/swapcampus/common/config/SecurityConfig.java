@@ -6,6 +6,7 @@ import com.swapcampus.common.security.JsonAuthenticationEntryPoint;
 import com.swapcampus.common.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
@@ -65,6 +66,15 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/swagger-ui/**"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/categories",
+                                "/api/tags",
+                                "/api/products",
+                                "/api/products/*",
+                                "/api/search/products",
+                                "/api/recommendations"
+                        ).permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/products/*/view").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
