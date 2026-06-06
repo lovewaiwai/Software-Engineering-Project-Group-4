@@ -83,6 +83,7 @@ public class UserServiceImpl implements UserService {
         userMapper.updateById(user);
 
         applyIfPresent(request.getBio(), profile::setBio);
+        applyIfPresent(request.getAvatarUrl(), profile::setAvatarUrl);
         saveProfile(profile);
 
         auditLogService.record(userId, "USER_PROFILE_UPDATE", "USER", user.getId(), "更新个人资料");
