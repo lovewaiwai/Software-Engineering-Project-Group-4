@@ -16,23 +16,23 @@
         text-color="#cbd5e1"
         active-text-color="#ffffff"
       >
-        <el-menu-item index="/admin">
+        <el-menu-item v-if="auth.isSystemReviewer" index="/admin">
           <el-icon><DataBoard /></el-icon>
           <span>工作台</span>
         </el-menu-item>
-        <el-menu-item index="/admin/reports">
+        <el-menu-item v-if="auth.isSystemReviewer" index="/admin/reports">
           <el-icon><Warning /></el-icon>
           <span>举报审核</span>
         </el-menu-item>
-        <el-menu-item index="/admin/products">
+        <el-menu-item v-if="auth.canReviewProducts" index="/admin/products">
           <el-icon><Goods /></el-icon>
           <span>商品审核</span>
         </el-menu-item>
-        <el-menu-item index="/admin/users">
+        <el-menu-item v-if="auth.isSystemReviewer" index="/admin/users">
           <el-icon><User /></el-icon>
           <span>用户管理</span>
         </el-menu-item>
-        <el-menu-item index="/admin/lockers">
+        <el-menu-item v-if="auth.isSystemReviewer" index="/admin/lockers">
           <el-icon><Box /></el-icon>
           <span>柜机管理</span>
         </el-menu-item>

@@ -1,8 +1,24 @@
 import { apiClient } from './client'
 import type { AdminDashboard, AdminReportDetail, AdminUserSummary, ApiResponse, ReportItem } from './types'
+import type { ProductItem } from './product'
 
 export async function fetchDashboard() {
   const { data } = await apiClient.get<ApiResponse<AdminDashboard>>('/admin/dashboard')
+  return data
+}
+
+export async function listPendingProducts() {
+  const { data } = await apiClient.get<ApiResponse<ProductItem[]>>('/admin/products/pending')
+  return data
+}
+
+export async function approveProduct(productId: number) {
+  const { data } = await apiClient.post<ApiResponse<ProductItem>>(`/admin/products/${productId}/approve`)
+  return data
+}
+
+export async function rejectProduct(productId: number, reason: string) {
+  const { data } = await apiClient.post<ApiResponse<ProductItem>>(`/admin/products/${productId}/reject`, { reason })
   return data
 }
 

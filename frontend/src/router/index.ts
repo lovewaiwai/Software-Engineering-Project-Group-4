@@ -50,11 +50,11 @@ const routes: RouteRecordRaw[] = [
     component: AdminLayout,
     meta: { requiresAdmin: true },
     children: [
-      { path: '', component: AdminDashboardView },
-      { path: 'products', component: AdminProductsView },
-      { path: 'reports', component: AdminReportsView },
-      { path: 'users', component: AdminUsersView },
-      { path: 'lockers', component: AdminLockersView },
+      { path: '', component: AdminDashboardView, meta: { requiresSystemReviewer: true } },
+      { path: 'products', component: AdminProductsView, meta: { requiresProductReviewer: true } },
+      { path: 'reports', component: AdminReportsView, meta: { requiresSystemReviewer: true } },
+      { path: 'users', component: AdminUsersView, meta: { requiresSystemReviewer: true } },
+      { path: 'lockers', component: AdminLockersView, meta: { requiresSystemReviewer: true } },
     ],
   },
 ]
@@ -65,6 +65,7 @@ const router = createRouter({
 })
 
 function defaultHomePath(auth: ReturnType<typeof useAuthStore>) {
+  if (auth.role === 'PRODUCT_REVIEWER') return '/admin/products'
   return auth.isAdmin ? '/admin' : '/'
 }
 
@@ -76,8 +77,14 @@ router.beforeEach((to) => {
   if (to.meta.requiresAdmin && !auth.isAdmin) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
+  if (to.meta.requiresSystemReviewer && !auth.isSystemReviewer) {
+    return auth.canReviewProducts ? { path: '/admin/products' } : { path: '/login', query: { redirect: to.fullPath } }
+  }
+  if (to.meta.requiresProductReviewer && !auth.canReviewProducts) {
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
   if (to.meta.requiresUser && auth.isAdmin) {
-    return { path: '/admin' }
+    return { path: defaultHomePath(auth) }
   }
   if (to.meta.guest && auth.isLoggedIn) {
     return defaultHomePath(auth)

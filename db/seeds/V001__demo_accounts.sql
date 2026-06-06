@@ -8,7 +8,7 @@ GO
 
 -- ============================================================================
 -- SwapCampus 演示账号种子数据 (V001)
--- 8 个普通用户 + 2 个管理账号 + 个人资料 + 信用分/积分/禁言/兑换/分类/商品
+-- 8 个普通用户 + 3 个管理账号 + 个人资料 + 信用分/积分/禁言/兑换/分类/商品
 -- 所有演示账号密码统一为: demo123
 -- ============================================================================
 
@@ -169,6 +169,21 @@ BEGIN
   VALUES (@uid, N'系统管理员', N'ADMIN001', N'信息中心', N'2020',
           N'平台管理员账号，负责商品审核、用户管理、举报处理等后台操作。',
           SYSDATETIME(), N'ADMIN****');
+END
+GO
+
+-- User: demo_product_reviewer (商品审核员)
+IF NOT EXISTS (SELECT 1 FROM users WHERE username = N'demo_product_reviewer')
+BEGIN
+  INSERT INTO users (username, password_hash, email, role, status, credit_score, point_balance, is_deleted)
+  VALUES (N'demo_product_reviewer', N'$2a$10$MXUEZ7Milfqrrhb1cYBvI.WqcIppdx9eA8mnYx9sVoR7TJosaRX4e',
+          N'product-reviewer@swapcampus.local', N'PRODUCT_REVIEWER', N'ACTIVE', 100, 0, 0);
+  DECLARE @uid BIGINT = SCOPE_IDENTITY();
+
+  INSERT INTO user_profiles (user_id, real_name, student_no, college, grade, bio, verified_at, contact_masked)
+  VALUES (@uid, N'商品审核员', N'PRODREV001', N'运营中心', N'2020',
+          N'商品审核专员账号，仅用于处理待审核商品的通过与拒绝。',
+          SYSDATETIME(), N'PROD****');
 END
 GO
 
@@ -472,5 +487,5 @@ IF @s IS NOT NULL AND @c2 IS NOT NULL AND NOT EXISTS (SELECT 1 FROM products WHE
   VALUES (@s, @c2, N'数据结构教材与习题集', N'课程复习资料，附少量笔记。包含课后习题答案和期末复习重点。', 26.00, 68.00, N'FAIR', N'主校区', N'MEETUP', N'ACTIVE');
 GO
 
-PRINT N'[Seed] 8个普通用户 + 2个管理员账号 + 信用/积分/禁言/兑换/分类/商品数据已就绪（密码: demo123）';
+PRINT N'[Seed] 8个普通用户 + 3个管理员账号 + 信用/积分/禁言/兑换/分类/商品数据已就绪（密码: demo123）';
 GO

@@ -225,6 +225,16 @@ GET  /api/users/me
 Authorization: Bearer <token>
 ```
 
+演示账号：
+
+```text
+普通买家/卖家: demo_buyer / demo123, demo_seller / demo123
+商品审核员: demo_product_reviewer / demo123
+默认商品审核员: product_reviewer / Product1234!
+系统审核员: reviewer / Admin1234!
+管理员: demo_admin / demo123
+```
+
 Swagger UI 支持 Bearer Token 认证，打开 `http://localhost:8080/swagger-ui.html` 后点击 Authorize，填入登录接口返回的 JWT 即可调试受保护接口。
 
 开发环境 CORS 已允许前端 `http://localhost:5173` 和 `http://127.0.0.1:5173` 调用后端。JWT 可通过环境变量覆盖：
