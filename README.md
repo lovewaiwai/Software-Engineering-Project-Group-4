@@ -413,6 +413,16 @@ SQL Server Express 常见实例名：
 
 本机 SQL Server 方案需要自己同步后端的 `DB_URL`，课程项目默认不走这条路线。
 
+## CI/CD 自动化测试
+
+仓库已添加 GitHub Actions 流水线：`.github/workflows/ci.yml`。每次向 `main` 分支 push，或向 `main` 发起 Pull Request 时，会自动执行：
+
+- 后端测试与覆盖率：进入 `backend` 目录运行 `mvn -B verify`，通过 JaCoCo 生成覆盖率报告，报告位置为 `backend/target/site/jacoco/index.html`。
+- 前端构建：进入 `frontend` 目录运行 `npm ci` 和 `npm run build`，覆盖 TypeScript 类型检查与 Vite 构建。
+- Docker 镜像构建：仅在 push 到 `main` 时运行 `docker compose --profile app build backend frontend`，验证前后端镜像可以正常打包。
+
+在 GitHub 仓库页面点击 `Actions` 标签页即可查看每次流水线运行结果。后续如果补充更多后端单元测试、前端测试或接口测试，只要把测试命令接入该 workflow，提交代码时就会自动检查。
+
 ## 当前 TODO
 
 - Agent A 后续可补充基于方法注解的角色权限矩阵，例如后台接口限制 `ADMIN` / `SYS_ADMIN`。
