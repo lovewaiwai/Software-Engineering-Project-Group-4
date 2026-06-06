@@ -57,6 +57,11 @@ public class ProductController {
         return ApiResponse.ok(productService.update(id, request));
     }
 
+    @GetMapping("/products/mine")
+    public ApiResponse<PageResponse<ProductResponse>> mine(@ModelAttribute ProductSearchRequest request) {
+        return ApiResponse.ok(productService.listMine(request));
+    }
+
     @GetMapping("/products/{id}")
     public ApiResponse<ProductResponse> detail(@PathVariable Long id) {
         return ApiResponse.ok(productService.detail(id));
