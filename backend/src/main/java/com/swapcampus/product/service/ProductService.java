@@ -26,6 +26,8 @@ public interface ProductService {
 
     PageResponse<ProductResponse> search(ProductSearchRequest request);
 
+    PageResponse<ProductResponse> listMine(ProductSearchRequest request);
+
     ProductResponse addImage(Long id, ProductImageRequest request);
 
     void favorite(Long id);

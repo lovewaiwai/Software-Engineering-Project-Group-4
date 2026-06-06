@@ -191,6 +191,25 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public PageResponse<ProductResponse> listMine(ProductSearchRequest request) {
+        Long userId = CurrentUserContext.requireUserId();
+        long page = Math.max(1, request.getPage());
+        long pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, request.getPageSize()));
+        LambdaQueryWrapper<ProductEntity> wrapper = new LambdaQueryWrapper<ProductEntity>()
+                .eq(ProductEntity::getSellerId, userId)
+                .orderByDesc(ProductEntity::getCreatedAt);
+        if (StringUtils.hasText(request.getStatus())) {
+            wrapper.eq(ProductEntity::getStatus, request.getStatus().trim());
+        }
+
+        IPage<ProductEntity> result = productMapper.selectPage(new Page<>(page, pageSize), wrapper);
+        List<ProductResponse> items = result.getRecords().stream()
+                .map(product -> toResponse(product, userId))
+                .toList();
+        return new PageResponse<>(items, page, pageSize, result.getTotal());
+    }
+
+    @Override
     @Transactional
     public ProductResponse addImage(Long id, ProductImageRequest request) {
         ProductEntity product = requireProduct(id);

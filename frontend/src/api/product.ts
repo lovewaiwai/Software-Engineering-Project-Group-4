@@ -45,6 +45,7 @@ export interface ProductSearchParams {
   conditionLevel?: string
   campus?: string
   tradeMode?: string
+  status?: string
   sort?: string
   page?: number
   pageSize?: number
@@ -91,6 +92,11 @@ export async function listTags() {
 
 export async function searchProducts(params: ProductSearchParams) {
   const { data } = await apiClient.get<ApiResponse<PageResponse<ProductItem>>>('/products', { params })
+  return data
+}
+
+export async function listMyProducts(params: ProductSearchParams) {
+  const { data } = await apiClient.get<ApiResponse<PageResponse<ProductItem>>>('/products/mine', { params })
   return data
 }
 
