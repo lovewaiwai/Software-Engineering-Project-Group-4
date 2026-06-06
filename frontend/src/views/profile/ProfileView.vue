@@ -7,7 +7,6 @@
       </div>
       <div class="header-actions">
         <el-button v-if="isOwnProfile" :icon="Coin" @click="router.push('/points')">积分中心</el-button>
-        <el-button :icon="Refresh" :loading="loading" @click="loadProfile">刷新</el-button>
       </div>
     </div>
 
@@ -16,8 +15,26 @@
     <template v-else-if="user">
       <section class="summary-band">
         <div class="avatar-wrap">
-          <el-avatar :size="72">
-            {{ displayInitial }}
+          <el-tooltip
+            v-if="isOwnProfile"
+            content="点击更新头像"
+            placement="top"
+          >
+            <div
+              class="avatar-clickable"
+              :class="{ 'avatar-uploading': uploadingAvatar }"
+              @click="triggerFileInput"
+            >
+              <el-avatar :size="72" :src="avatarSrc">
+                {{ avatarSrc ? '' : displayInitial }}
+              </el-avatar>
+              <div class="avatar-overlay">
+                <el-icon><Camera /></el-icon>
+              </div>
+            </div>
+          </el-tooltip>
+          <el-avatar v-else :size="72" :src="avatarSrc">
+            {{ avatarSrc ? '' : displayInitial }}
           </el-avatar>
           <div>
             <h2>{{ displayName }}</h2>
@@ -43,6 +60,14 @@
           </div>
         </div>
       </section>
+
+      <input
+        ref="fileInputRef"
+        type="file"
+        accept="image/*"
+        style="display:none"
+        @change="handleAvatarUpload"
+      />
 
       <section class="content-grid">
         <!-- 实名认证：只读 -->
@@ -159,7 +184,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { Coin, Edit, Refresh } from '@element-plus/icons-vue'
+import { Camera, Coin, Edit, Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import {
   fetchCreditRecords,
@@ -167,6 +192,8 @@ import {
   updateCurrentUserProfile,
   type UserProfileUpdatePayload,
 } from '../../api/user'
+import { uploadChatImage } from '../../api/chat'
+import { resolveMediaUrl } from '../../utils/media'
 import type { CreditRecord, UserInfo } from '../../api/types'
 import { useAuthStore } from '../../stores/auth'
 
@@ -186,6 +213,8 @@ const creditPageSize = 10
 const creditTotal = ref(0)
 const phoneError = ref('')
 const emailError = ref('')
+const uploadingAvatar = ref(false)
+const fileInputRef = ref<HTMLInputElement | null>(null)
 
 const form = reactive<UserProfileUpdatePayload & { phone: string; email: string; bio: string }>({
   phone: '',
@@ -196,6 +225,10 @@ const form = reactive<UserProfileUpdatePayload & { phone: string; email: string;
 const isOwnProfile = computed(() => auth.userId === Number(props.id))
 const displayName = computed(() => user.value?.profile?.realName || user.value?.username || '用户')
 const displayInitial = computed(() => displayName.value.slice(0, 1).toUpperCase())
+const avatarSrc = computed(() => {
+  const url = user.value?.profile?.avatarUrl
+  return url ? resolveMediaUrl(url) : ''
+})
 
 watch(
   () => props.id,
@@ -295,6 +328,51 @@ async function saveProfile() {
   }
 }
 
+function triggerFileInput() {
+  fileInputRef.value?.click()
+}
+
+async function handleAvatarUpload(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    ElMessage.error('请选择图片文件')
+    return
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.error('图片大小不能超过 5MB')
+    return
+  }
+
+  uploadingAvatar.value = true
+  try {
+    const uploadResponse = await uploadChatImage(file)
+    if (uploadResponse.code !== 0) {
+      throw new Error(uploadResponse.message || '头像上传失败')
+    }
+    const avatarUrl = uploadResponse.data.url
+
+    const updateResponse = await updateCurrentUserProfile({ avatarUrl })
+    if (updateResponse.code !== 0) {
+      throw new Error(updateResponse.message || '头像更新失败')
+    }
+    user.value = updateResponse.data
+    auth.updateProfile(updateResponse.data.profile)
+    ElMessage.success('头像更新成功')
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '头像上传失败')
+  } finally {
+    uploadingAvatar.value = false
+    // 重置 input，允许再次选择同一个文件
+    if (fileInputRef.value) {
+      fileInputRef.value.value = ''
+    }
+  }
+}
+
 function normalize(value?: string) {
   const trimmed = value?.trim()
   return trimmed || undefined
@@ -353,6 +431,33 @@ h2 {
 }
 .avatar-wrap {
   gap: 16px;
+}
+.avatar-clickable {
+  position: relative;
+  cursor: pointer;
+  border-radius: 50%;
+  overflow: hidden;
+  transition: opacity 0.2s;
+}
+.avatar-clickable:hover .avatar-overlay {
+  opacity: 1;
+}
+.avatar-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 0.2s;
+  color: #fff;
+  font-size: 24px;
+  border-radius: 50%;
+}
+.avatar-uploading .avatar-overlay {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.6);
 }
 .score-grid {
   display: grid;
