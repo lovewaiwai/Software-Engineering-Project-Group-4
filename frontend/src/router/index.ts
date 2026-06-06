@@ -25,24 +25,25 @@ import AdminUsersView from '../views/admin/AdminUsersView.vue'
 import AdminLockersView from '../views/admin/AdminLockersView.vue'
 
 import { useAuthStore } from '../stores/auth'
+import { fetchCurrentUser } from '../api/user'
 
 
 const routes: RouteRecordRaw[] = [
   { path: '/login', component: LoginView, meta: { guest: true } },
   { path: '/register', component: RegisterView, meta: { guest: true } },
-  { path: '/verify', component: VerifyView },
+  { path: '/verify', component: VerifyView, meta: { requiresAuth: true, requiresUser: true } },
   {
     path: '/',
     component: AppLayout,
     children: [
       { path: '', component: HomeView },
       { path: 'products', component: ProductListView },
-      { path: 'products/new', component: ProductCreateView },
+      { path: 'products/new', component: ProductCreateView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
       { path: 'products/mine', component: MyProductsView, meta: { requiresAuth: true, requiresUser: true } },
       { path: 'products/:id', component: ProductDetailView, props: true },
-      { path: 'orders', component: OrderListView },
-      { path: 'orders/:id', component: OrderDetailView, props: true },
-      { path: 'chat', component: ChatView, meta: { requiresAuth: true, requiresUser: true } },
+      { path: 'orders', component: OrderListView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
+      { path: 'orders/:id', component: OrderDetailView, props: true, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
+      { path: 'chat', component: ChatView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
       { path: 'profile/:id', component: ProfileView, props: true, meta: { requiresAuth: true } },
       { path: 'points', component: PointsView, meta: { requiresAuth: true, requiresUser: true } },
     ],
@@ -71,7 +72,7 @@ function defaultHomePath(auth: ReturnType<typeof useAuthStore>) {
   return auth.isAdmin ? '/admin' : '/'
 }
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     return { path: '/login', query: { redirect: to.fullPath } }
@@ -87,6 +88,19 @@ router.beforeEach((to) => {
   }
   if (to.meta.requiresUser && auth.isAdmin) {
     return { path: defaultHomePath(auth) }
+  }
+  if (to.meta.requiresVerified && auth.isLoggedIn && !auth.isVerified) {
+    try {
+      const response = await fetchCurrentUser()
+      if (response.code === 0) {
+        auth.updateProfile(response.data.profile)
+      }
+    } catch {
+      // keep local state when refresh fails
+    }
+  }
+  if (to.meta.requiresVerified && auth.isLoggedIn && !auth.isVerified) {
+    return { path: '/verify', query: { redirect: to.fullPath } }
   }
   if (to.meta.guest && auth.isLoggedIn) {
     return defaultHomePath(auth)

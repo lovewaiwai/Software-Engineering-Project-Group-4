@@ -11,8 +11,7 @@ export interface UserProfileUpdatePayload {
 export async function verifyStudent(payload: {
   studentNo: string
   realName: string
-  college: string
-  grade: string
+  eduPassword: string
 }) {
   const { data } = await apiClient.post<ApiResponse<UserInfo>>('/users/me/verify-student', payload)
   return data

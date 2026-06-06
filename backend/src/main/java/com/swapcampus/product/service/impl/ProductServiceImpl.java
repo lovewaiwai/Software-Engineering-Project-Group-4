@@ -28,6 +28,7 @@ import com.swapcampus.product.service.ProductService;
 import com.swapcampus.product.vo.CategoryResponse;
 import com.swapcampus.product.vo.ProductResponse;
 import com.swapcampus.product.vo.TagResponse;
+import com.swapcampus.user.service.UserVerificationGuard;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -52,19 +53,22 @@ public class ProductServiceImpl implements ProductService {
     private final ProductImageMapper productImageMapper;
     private final ProductFavoriteMapper productFavoriteMapper;
     private final BrowseRecordMapper browseRecordMapper;
+    private final UserVerificationGuard userVerificationGuard;
 
     public ProductServiceImpl(ProductMapper productMapper,
                               CategoryMapper categoryMapper,
                               TagMapper tagMapper,
                               ProductImageMapper productImageMapper,
                               ProductFavoriteMapper productFavoriteMapper,
-                              BrowseRecordMapper browseRecordMapper) {
+                              BrowseRecordMapper browseRecordMapper,
+                              UserVerificationGuard userVerificationGuard) {
         this.productMapper = productMapper;
         this.categoryMapper = categoryMapper;
         this.tagMapper = tagMapper;
         this.productImageMapper = productImageMapper;
         this.productFavoriteMapper = productFavoriteMapper;
         this.browseRecordMapper = browseRecordMapper;
+        this.userVerificationGuard = userVerificationGuard;
     }
 
     @Override
@@ -108,6 +112,7 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     public ProductResponse create(ProductRequest request) {
         Long sellerId = CurrentUserContext.requireUserId();
+        userVerificationGuard.requireVerifiedStudent(sellerId);
         ensureCategoryExists(request.getCategoryId());
         LocalDateTime now = LocalDateTime.now();
         ProductEntity entity = new ProductEntity();
@@ -129,6 +134,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse update(Long id, ProductRequest request) {
         ProductEntity entity = requireProduct(id);
         Long userId = CurrentUserContext.requireUserId();
+        userVerificationGuard.requireVerifiedStudent(userId);
         if (!userId.equals(entity.getSellerId())) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "只能编辑自己发布的商品");
         }
@@ -214,6 +220,7 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse addImage(Long id, ProductImageRequest request) {
         ProductEntity product = requireProduct(id);
         Long userId = CurrentUserContext.requireUserId();
+        userVerificationGuard.requireVerifiedStudent(userId);
         if (!userId.equals(product.getSellerId())) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "只能给自己发布的商品添加图片");
         }

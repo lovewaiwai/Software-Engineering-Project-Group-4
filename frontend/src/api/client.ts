@@ -29,7 +29,13 @@ apiClient.interceptors.response.use(
     const message = error.response?.data?.message as string | undefined
     const authStore = useAuthStore()
     const onLoginPage = window.location.pathname.startsWith('/login')
+    const onVerifyPage = window.location.pathname.startsWith('/verify')
     const authRequest = isPublicAuthRequest(error.config?.url)
+
+    if (status === 403 && message?.includes('学生认证') && authStore.isLoggedIn && !onVerifyPage) {
+      const redirect = encodeURIComponent(window.location.pathname + window.location.search)
+      window.location.href = `/verify?redirect=${redirect}`
+    }
 
     if (status === 403 && (message?.includes('封禁') || authRequest)) {
       authStore.clearSession()

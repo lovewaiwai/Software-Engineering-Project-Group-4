@@ -3,7 +3,7 @@
     <div class="page-header">
       <div class="header-left">
         <div>
-          <p class="eyebrow">Points</p>
+          <p class="eyebrow">积分</p>
           <h1>积分中心</h1>
         </div>
         <div class="header-points">

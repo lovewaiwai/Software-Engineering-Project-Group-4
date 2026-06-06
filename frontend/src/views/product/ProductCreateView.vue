@@ -176,6 +176,10 @@ onMounted(async () => {
     await router.push({ path: '/login', query: { redirect: '/products/new' } })
     return
   }
+  if (!auth.isVerified) {
+    await router.push({ path: '/verify', query: { redirect: '/products/new' } })
+    return
+  }
   await loadCategories()
 })
 

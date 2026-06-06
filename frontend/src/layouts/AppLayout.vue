@@ -5,11 +5,11 @@
       <el-menu router :default-active="$route.path" class="nav-menu">
         <el-menu-item index="/">
           <el-icon><House /></el-icon>
-          <span>Home</span>
+          <span>首页</span>
         </el-menu-item>
         <el-menu-item index="/products">
           <el-icon><Goods /></el-icon>
-          <span>Products</span>
+          <span>商品</span>
         </el-menu-item>
         <el-menu-item v-if="auth.isLoggedIn && !auth.isAdmin" index="/products/mine">
           <el-icon><Goods /></el-icon>
@@ -17,11 +17,11 @@
         </el-menu-item>
         <el-menu-item index="/orders">
           <el-icon><Tickets /></el-icon>
-          <span>Orders</span>
+          <span>订单</span>
         </el-menu-item>
         <el-menu-item v-if="!auth.isAdmin" index="/chat">
           <el-icon><ChatDotRound /></el-icon>
-          <span>Chat</span>
+          <span>聊天</span>
         </el-menu-item>
                       </el-menu>
     </el-aside>

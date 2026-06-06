@@ -1,76 +1,78 @@
 <template>
-  <section class="product-review">
-    <div class="toolbar">
+  <section class="product-review-page">
+    <div class="page-head">
       <div>
-        <h2>商品审核队列</h2>
-        <p>只展示待审核商品，审核通过后商品会上架展示。</p>
+        <h1>商品审核</h1>
+        <p>查看待审核商品，确认信息合规后上架，或填写原因退回给卖家修改。</p>
       </div>
-      <el-button type="primary" :loading="loading" @click="loadProducts">刷新</el-button>
+      <el-button type="primary" :icon="Refresh" :loading="loading" @click="loadProducts">刷新列表</el-button>
     </div>
 
-    <el-table
-      v-loading="loading"
-      :data="products"
-      row-key="id"
-      class="review-table"
-      empty-text="暂无待审核商品"
-    >
-      <el-table-column label="商品" min-width="320">
-        <template #default="{ row }">
-          <div class="product-cell">
-            <el-image
-              class="thumb"
-              :src="firstImage(row)"
-              fit="cover"
-              :preview-src-list="row.imageUrls || []"
-              preview-teleported
-            >
-              <template #error>
-                <div class="thumb-empty">无图</div>
-              </template>
-            </el-image>
-            <div class="product-main">
-              <strong>{{ row.title }}</strong>
-              <span>{{ row.categoryName || '未分类' }} · {{ conditionLabel(row.conditionLevel) }}</span>
-              <p>{{ row.description || '暂无描述' }}</p>
+    <div class="review-panel">
+      <el-table
+        v-loading="loading"
+        :data="products"
+        row-key="id"
+        class="review-table"
+        empty-text="暂无待审核商品"
+      >
+        <el-table-column label="商品" min-width="320">
+          <template #default="{ row }">
+            <div class="product-cell">
+              <el-image
+                class="thumb"
+                :src="firstImage(row)"
+                fit="cover"
+                :preview-src-list="row.imageUrls || []"
+                preview-teleported
+              >
+                <template #error>
+                  <div class="thumb-empty">无图</div>
+                </template>
+              </el-image>
+              <div class="product-main">
+                <strong>{{ row.title }}</strong>
+                <span>{{ row.categoryName || '未分类' }} · {{ conditionLabel(row.conditionLevel) }}</span>
+                <p>{{ row.description || '暂无描述' }}</p>
+              </div>
             </div>
-          </div>
-        </template>
-      </el-table-column>
+          </template>
+        </el-table-column>
 
-      <el-table-column label="价格" width="110">
-        <template #default="{ row }">¥{{ Number(row.price).toFixed(2) }}</template>
-      </el-table-column>
+        <el-table-column label="价格" width="110">
+          <template #default="{ row }">¥{{ Number(row.price).toFixed(2) }}</template>
+        </el-table-column>
 
-      <el-table-column label="交易方式" width="160">
-        <template #default="{ row }">
-          <el-tag v-for="mode in row.tradeModes" :key="mode" size="small" class="tag">
-            {{ tradeModeLabel(mode) }}
-          </el-tag>
-        </template>
-      </el-table-column>
+        <el-table-column label="交易方式" width="150">
+          <template #default="{ row }">
+            <el-tag v-for="mode in row.tradeModes" :key="mode" size="small" class="tag" effect="plain">
+              {{ tradeModeLabel(mode) }}
+            </el-tag>
+          </template>
+        </el-table-column>
 
-      <el-table-column label="提交时间" width="170">
-        <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
-      </el-table-column>
+        <el-table-column label="提交时间" width="170">
+          <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
+        </el-table-column>
 
-      <el-table-column label="状态" width="120">
-        <template #default="{ row }">
-          <el-tag type="warning">{{ productStatusLabel(row.status) }}</el-tag>
-        </template>
-      </el-table-column>
+        <el-table-column label="状态" width="110">
+          <template #default="{ row }">
+            <el-tag type="warning" effect="plain">{{ productStatusLabel(row.status) }}</el-tag>
+          </template>
+        </el-table-column>
 
-      <el-table-column label="操作" width="190" fixed="right">
-        <template #default="{ row }">
-          <el-button type="success" size="small" :loading="actingId === row.id" @click="handleApprove(row.id)">
-            通过
-          </el-button>
-          <el-button type="danger" size="small" :disabled="actingId === row.id" @click="openReject(row)">
-            拒绝
-          </el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+        <el-table-column label="操作" width="180" fixed="right">
+          <template #default="{ row }">
+            <el-button type="success" size="small" :loading="actingId === row.id" @click="handleApprove(row.id)">
+              通过
+            </el-button>
+            <el-button type="danger" size="small" :disabled="actingId === row.id" @click="openReject(row)">
+              拒绝
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
 
     <el-dialog v-model="rejectDialogVisible" title="拒绝商品" width="420px">
       <el-form label-position="top">
@@ -81,7 +83,7 @@
             :rows="4"
             maxlength="300"
             show-word-limit
-            placeholder="请填写拒绝原因，卖家可在商品记录中看到"
+            placeholder="请填写拒绝原因，卖家会在商品记录中看到"
           />
         </el-form-item>
       </el-form>
@@ -98,6 +100,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Refresh } from '@element-plus/icons-vue'
 import { approveProduct, listPendingProducts, rejectProduct } from '../../api/admin'
 import type { ProductItem } from '../../api/product'
 import { formatDateTime } from '../../utils/adminLabels'
@@ -205,43 +208,41 @@ function tradeModeLabel(mode: string) {
 </script>
 
 <style scoped>
-.product-review {
+.product-review-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
-
-.toolbar {
+.page-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
 }
-
-.toolbar h2 {
+.page-head h1 {
   margin: 0;
-  color: #0f172a;
-  font-size: 20px;
+  font-size: 26px;
 }
-
-.toolbar p {
+.page-head p {
   margin: 6px 0 0;
   color: #64748b;
-  font-size: 13px;
 }
-
-.review-table {
+.review-panel {
+  background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
-  overflow: hidden;
+  padding: 14px;
 }
-
+.review-table :deep(.el-table__header th) {
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+}
 .product-cell {
   display: flex;
   align-items: flex-start;
   gap: 12px;
 }
-
 .thumb {
   width: 72px;
   height: 72px;
@@ -249,7 +250,6 @@ function tradeModeLabel(mode: string) {
   border-radius: 6px;
   background: #f1f5f9;
 }
-
 .thumb-empty {
   width: 72px;
   height: 72px;
@@ -258,24 +258,20 @@ function tradeModeLabel(mode: string) {
   color: #94a3b8;
   font-size: 12px;
 }
-
 .product-main {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 5px;
 }
-
 .product-main strong {
   color: #0f172a;
   font-size: 14px;
 }
-
 .product-main span {
   color: #64748b;
   font-size: 12px;
 }
-
 .product-main p {
   margin: 0;
   color: #475569;
@@ -285,8 +281,13 @@ function tradeModeLabel(mode: string) {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-
 .tag {
   margin: 2px 4px 2px 0;
+}
+@media (max-width: 760px) {
+  .page-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 </style>

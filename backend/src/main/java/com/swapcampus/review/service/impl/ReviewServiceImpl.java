@@ -2,6 +2,8 @@ package com.swapcampus.review.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.swapcampus.common.enums.OrderStatus;
+import com.swapcampus.common.exception.BusinessException;
+import com.swapcampus.common.exception.ErrorCode;
 import com.swapcampus.order.entity.OrderEntity;
 import com.swapcampus.order.mapper.OrderMapper;
 import com.swapcampus.review.dto.ReviewRequest;
@@ -9,11 +11,13 @@ import com.swapcampus.review.entity.ReviewEntity;
 import com.swapcampus.review.mapper.ReviewMapper;
 import com.swapcampus.review.service.ReviewService;
 import com.swapcampus.review.vo.ReviewResponse;
+import com.swapcampus.user.service.UserVerificationGuard;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,36 +25,44 @@ public class ReviewServiceImpl implements ReviewService {
 
     private final ReviewMapper reviewMapper;
     private final OrderMapper orderMapper;
+    private final UserVerificationGuard userVerificationGuard;
 
-    public ReviewServiceImpl(ReviewMapper reviewMapper, OrderMapper orderMapper) {
+    public ReviewServiceImpl(ReviewMapper reviewMapper,
+                             OrderMapper orderMapper,
+                             UserVerificationGuard userVerificationGuard) {
         this.reviewMapper = reviewMapper;
         this.orderMapper = orderMapper;
+        this.userVerificationGuard = userVerificationGuard;
     }
 
     @Override
     @Transactional
     public ReviewResponse createReview(ReviewRequest request, Long reviewerId) {
+        userVerificationGuard.requireVerifiedStudent(reviewerId);
+
         OrderEntity order = orderMapper.selectById(request.getOrderId());
-        if (order == null) throw new RuntimeException("订单不存在");
+        if (order == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "订单不存在");
+        }
         if (!OrderStatus.COMPLETED.name().equals(order.getStatus())) {
-            throw new RuntimeException("订单未完成，不能评价");
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "订单未完成，不能评价");
         }
 
-        // 判断评价方是买家还是卖家，确定被评价方
         Long revieweeId;
-        if (order.getBuyerId().equals(reviewerId)) {
+        if (Objects.equals(order.getBuyerId(), reviewerId)) {
             revieweeId = order.getSellerId();
-        } else if (order.getSellerId().equals(reviewerId)) {
+        } else if (Objects.equals(order.getSellerId(), reviewerId)) {
             revieweeId = order.getBuyerId();
         } else {
-            throw new RuntimeException("无权评价此订单");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权评价此订单");
         }
 
-        // 检查是否已经评价过
         Long count = reviewMapper.selectCount(new LambdaQueryWrapper<ReviewEntity>()
                 .eq(ReviewEntity::getOrderId, request.getOrderId())
                 .eq(ReviewEntity::getReviewerId, reviewerId));
-        if (count > 0) throw new RuntimeException("已评价过此订单");
+        if (count > 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "已评价过此订单");
+        }
 
         ReviewEntity review = new ReviewEntity();
         review.setOrderId(request.getOrderId());

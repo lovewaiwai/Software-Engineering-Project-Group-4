@@ -2,7 +2,7 @@
   <section class="profile-page">
     <div class="page-header">
       <div>
-        <p class="eyebrow">User</p>
+        <p class="eyebrow">用户</p>
         <h1>个人主页</h1>
       </div>
       <div class="header-actions">

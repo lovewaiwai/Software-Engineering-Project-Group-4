@@ -149,6 +149,7 @@ function openBuyDialog() {
     ElMessage.warning('管理员账号不参与购买，请使用普通用户账号')
     return
   }
+  if (!ensureVerified()) return
   buyDialogVisible.value = true
 }
 
@@ -202,12 +203,20 @@ async function contactSeller() {
     ElMessage.warning('管理员账号不参与用户聊天，请使用普通用户账号联系卖家')
     return
   }
+  if (!ensureVerified()) return
   try {
     const session = await openOrCreateSession(product.value.sellerId, product.value.id)
     await router.push({ path: '/chat', query: { sessionId: String(session.id) } })
   } catch (error) {
     ElMessage.error(getApiErrorMessage(error, '无法发起聊天'))
   }
+}
+
+function ensureVerified() {
+  if (auth.isVerified) return true
+  ElMessage.warning('请先完成学生认证')
+  router.push({ path: '/verify', query: { redirect: `/products/${props.id}` } })
+  return false
 }
 
 async function goLogin() {

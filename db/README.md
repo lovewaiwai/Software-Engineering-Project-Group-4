@@ -1,44 +1,43 @@
-# 数据库脚本与演示账号
+# 数据库脚本说明
 
-`db/migrations/` 存放结构迁移脚本，`db/seeds/` 存放演示数据脚本。执行下面命令时，`db-init` 会重建 `SwapCampus` 数据库，并按文件名顺序执行迁移和种子数据：
+本项目当前采用“本地演示库固定重建”的初始化方式。
 
-```powershell
-docker compose up -d db-init
+执行 `db-init` 时会先删除并重建 `SwapCampus` 数据库，然后按文件名顺序执行：
+
+```text
+db/migrations/V001__init.sql
+db/seeds/V001__demo_accounts.sql
 ```
 
-如果使用全套 Docker 一键启动，也会执行同样的数据库初始化流程：
+因此：
+
+- `db/migrations/V001__init.sql` 是唯一结构初始化脚本，新增表、字段、索引时直接合并到这里。
+- `db/seeds/V001__demo_accounts.sql` 面向空库直接插入演示数据，不再写 `IF NOT EXISTS` 幂等判断。
+- 每次执行 `docker compose up -d db-init` 都会覆盖本地业务数据。
+
+全套 Docker 启动也会触发同样流程：
 
 ```powershell
 docker compose --profile app up -d --build
 ```
 
-注意：当前初始化流程会清空并重建 `SwapCampus` 数据库，已有业务数据会被覆盖。
+常用演示账号密码统一为 `demo123`：
 
-## 演示账号
+| 用途 | 用户名 |
+| --- | --- |
+| 普通买家 | `demo_buyer` |
+| 普通卖家 | `demo_seller` |
+| 新普通用户 | `new_user` |
+| 禁言用户 | `muted_user` |
+| 封禁用户 | `banned_user` |
+| 商品审核员 | `demo_product_reviewer` |
+| 系统管理员 | `demo_admin` |
+| 超级管理员 | `demo_sysadmin` |
 
-`db/seeds/V001__demo_accounts.sql` 会写入以下账号：
-
-| 用途 | 用户名 | 密码 | 说明 |
-| --- | --- | --- | --- |
-| 普通买家 | `demo_buyer` | `User1234!` | 测试用户端、个人页、积分、从商品页联系卖家、发起聊天 |
-| 普通卖家 | `demo_seller` | `Seller1234!` | 测试聊天另一端、卖家身份、接收买家消息 |
-| 管理员/审核员 | `reviewer` | `Admin1234!` | 测试 `/admin` 后台、举报审核、用户封禁/禁言管理 |
-| 禁言用户 | `muted_user` | `Muted1234!` | 测试登录正常但发送聊天消息被拦截 |
-| 封禁用户 | `banned_user` | `Banned1234!` | 测试登录被拒绝，接口返回 403 |
-
-全新初始化后的常见用户 ID：
+学生认证 mock 学籍也在 seed 中初始化。未绑定测试学籍：
 
 ```text
-1 demo_buyer
-2 demo_seller
-3 muted_user
-4 banned_user
-5 reviewer
+学号: 20269999
+姓名: 未绑定学生
+教务密码: demo123
 ```
-
-演示商品由 `demo_seller` 发布。建议测试聊天时使用两个浏览器窗口：
-
-- 普通窗口登录 `demo_buyer`
-- 无痕窗口登录 `demo_seller`
-
-然后用 `demo_buyer` 打开商品详情页，点击“联系卖家”发起聊天。
