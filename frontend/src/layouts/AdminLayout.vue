@@ -33,7 +33,6 @@
           <el-tag type="info" effect="plain">{{ roleLabel }}</el-tag>
         </div>
         <div class="header-right">
-          <el-button text @click="$router.push('/')">返回用户端</el-button>
           <el-dropdown trigger="click" @command="handleCommand">
             <span class="admin-user">
               <el-icon><UserFilled /></el-icon>

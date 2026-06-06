@@ -74,10 +74,13 @@ function defaultHomePath(auth: ReturnType<typeof useAuthStore>) {
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
+  if (auth.isAdmin && !to.path.startsWith('/admin') && !to.meta.guest) {
+    return { path: defaultHomePath(auth) }
+  }
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
-  if (to.meta.requiresAdmin && !auth.isAdmin) {
+  if (to.meta.requiresAdmin && (!auth.isLoggedIn || !auth.isAdmin)) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
   if (to.meta.requiresSystemReviewer && !auth.isSystemReviewer) {
