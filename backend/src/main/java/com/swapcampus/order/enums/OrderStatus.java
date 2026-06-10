@@ -6,6 +6,7 @@ package com.swapcampus.order.enums;
 public enum OrderStatus {
     CREATED,
     SELLER_CONFIRMED,
+    SELLER_REJECTED,  // 新增
     PAYMENT_PENDING,
     PAID,
     DELIVERY_PENDING,

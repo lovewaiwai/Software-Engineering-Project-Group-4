@@ -55,4 +55,17 @@ public class OrderController {
             @AuthenticationPrincipal CurrentUserPrincipal principal) {
         return ApiResponse.ok(orderService.confirmComplete(orderId, principal.getUserId()));
     }
+    @PostMapping("/{orderId}/seller-confirm")
+    public ApiResponse<OrderResponse> sellerConfirm(
+            @PathVariable Long orderId,
+            @AuthenticationPrincipal CurrentUserPrincipal principal) {
+        return ApiResponse.ok(orderService.sellerConfirm(orderId, principal.getUserId()));
+    }
+
+    @PostMapping("/{orderId}/seller-reject")
+    public ApiResponse<OrderResponse> sellerReject(
+            @PathVariable Long orderId,
+            @AuthenticationPrincipal CurrentUserPrincipal principal) {
+        return ApiResponse.ok(orderService.sellerReject(orderId, principal.getUserId()));
+    }
 }

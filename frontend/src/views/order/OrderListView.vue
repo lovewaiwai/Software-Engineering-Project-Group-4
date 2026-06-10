@@ -61,12 +61,16 @@ async function loadOrders() {
 function statusLabel(status: string) {
   const map: Record<string, string> = {
     CREATED: '待支付',
-    PAID: '已支付',
+    PAID: '已支付，待卖家确认',
+    SELLER_CONFIRMED: '卖家已确认',
+    SELLER_REJECTED: '卖家已拒绝',
     DELIVERY_PENDING: '配送中',
     COMPLETED: '已完成',
     CANCELLED: '已取消',
     REFUNDING: '退款中',
     REFUNDED: '已退款',
+    DISPUTED: '争议中',
+    CLOSED: '已关闭',
   }
   return map[status] ?? status
 }
@@ -74,12 +78,16 @@ function statusLabel(status: string) {
 function statusType(status: string): 'success' | 'warning' | 'danger' | 'info' | '' {
   const map: Record<string, 'success' | 'warning' | 'danger' | 'info' | ''> = {
     CREATED: 'warning',
-    PAID: '',
+    PAID: 'warning',
+    SELLER_CONFIRMED: '',
+    SELLER_REJECTED: 'danger',
     DELIVERY_PENDING: '',
     COMPLETED: 'success',
     CANCELLED: 'info',
     REFUNDING: 'warning',
     REFUNDED: 'info',
+    DISPUTED: 'danger',
+    CLOSED: 'info',
   }
   return map[status] ?? ''
 }
