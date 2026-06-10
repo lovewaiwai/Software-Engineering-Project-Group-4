@@ -1,17 +1,17 @@
-import { apiClient } from './client'
+﻿import { apiClient } from './client'
 import type { ApiResponse, CreditRecord, PageResponse, UserInfo } from './types'
 
 export interface UserProfileUpdatePayload {
   phone?: string
   email?: string
   bio?: string
+  avatarUrl?: string
 }
 
 export async function verifyStudent(payload: {
   studentNo: string
   realName: string
-  college: string
-  grade: string
+  eduPassword: string
 }) {
   const { data } = await apiClient.post<ApiResponse<UserInfo>>('/users/me/verify-student', payload)
   return data

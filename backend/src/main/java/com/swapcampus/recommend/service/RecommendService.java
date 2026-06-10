@@ -1,9 +1,12 @@
 package com.swapcampus.recommend.service;
 
+import com.swapcampus.product.vo.ProductResponse;
+
+import java.util.List;
+
 public interface RecommendService {
 
-    /**
-     * TODO: Replace this scaffold method with recommend application services.
-     */
     String moduleName();
+
+    List<ProductResponse> recommendations(int limit);
 }

@@ -13,13 +13,9 @@ public class UserStudentVerifyRequest {
     @Size(max = 30, message = "学号不能超过30个字符")
     private String studentNo;
 
-    @NotBlank(message = "学院不能为空")
-    @Size(max = 80, message = "学院不能超过80个字符")
-    private String college;
-
-    @NotBlank(message = "年级不能为空")
-    @Size(max = 20, message = "年级不能超过20个字符")
-    private String grade;
+    @NotBlank(message = "教务系统密码不能为空")
+    @Size(max = 100, message = "教务系统密码不能超过100个字符")
+    private String eduPassword;
 
     public String getRealName() {
         return realName;
@@ -37,19 +33,11 @@ public class UserStudentVerifyRequest {
         this.studentNo = studentNo;
     }
 
-    public String getCollege() {
-        return college;
+    public String getEduPassword() {
+        return eduPassword;
     }
 
-    public void setCollege(String college) {
-        this.college = college;
-    }
-
-    public String getGrade() {
-        return grade;
-    }
-
-    public void setGrade(String grade) {
-        this.grade = grade;
+    public void setEduPassword(String eduPassword) {
+        this.eduPassword = eduPassword;
     }
 }

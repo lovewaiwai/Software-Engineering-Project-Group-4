@@ -11,13 +11,13 @@ public class MockAiSuggestAdapter implements AiSuggestAdapter {
     @Override
     public AiSuggestResult suggest(AiSuggestCommand command) {
         String title = command.title() == null ? "" : command.title();
-        if (containsAny(title, "textbook", "book", "math", "english")) {
-            return new AiSuggestResult("Textbooks", List.of("course", "used"), BigDecimal.valueOf(20), BigDecimal.valueOf(120), "MOCK");
+        if (containsAny(title, "textbook", "book", "math", "english", "教材", "高数", "英语", "考研", "课本")) {
+            return new AiSuggestResult("Textbooks", List.of("课程", "教材"), BigDecimal.valueOf(20), BigDecimal.valueOf(120), "MOCK");
         }
-        if (containsAny(title, "phone", "keyboard", "headphone", "tablet")) {
-            return new AiSuggestResult("Digital", List.of("electronics", "campus"), BigDecimal.valueOf(80), BigDecimal.valueOf(800), "MOCK");
+        if (containsAny(title, "phone", "keyboard", "headphone", "tablet", "手机", "键盘", "耳机", "平板", "数码")) {
+            return new AiSuggestResult("Digital", List.of("数码", "校园"), BigDecimal.valueOf(80), BigDecimal.valueOf(800), "MOCK");
         }
-        return new AiSuggestResult("Other", List.of("campus", "second-hand"), BigDecimal.valueOf(10), BigDecimal.valueOf(100), "MOCK");
+        return new AiSuggestResult("Other", List.of("校园", "闲置"), BigDecimal.valueOf(10), BigDecimal.valueOf(100), "MOCK");
     }
 
     private boolean containsAny(String source, String... keywords) {

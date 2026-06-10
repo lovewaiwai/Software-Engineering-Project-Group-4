@@ -1,38 +1,25 @@
 <template>
   <el-container class="admin-layout">
-    <el-aside class="admin-sidebar" width="240px">
-      <div class="brand">
-        <span class="brand-badge">审核</span>
-        <div>
-          <strong>SwapCampus</strong>
-          <small>内容审核后台</small>
-        </div>
-      </div>
-      <el-menu
-        router
-        :default-active="$route.path"
-        class="admin-menu"
-        background-color="#0f172a"
-        text-color="#cbd5e1"
-        active-text-color="#ffffff"
-      >
-        <el-menu-item index="/admin">
+    <el-aside class="admin-sidebar" width="220px">
+      <div class="brand">SwapCampus</div>
+      <el-menu router :default-active="$route.path" class="admin-menu">
+        <el-menu-item v-if="auth.isSystemReviewer" index="/admin">
           <el-icon><DataBoard /></el-icon>
           <span>工作台</span>
         </el-menu-item>
-        <el-menu-item index="/admin/reports">
-          <el-icon><Warning /></el-icon>
-          <span>举报审核</span>
-        </el-menu-item>
-        <el-menu-item index="/admin/products">
+        <el-menu-item v-if="auth.canReviewProducts" index="/admin/products">
           <el-icon><Goods /></el-icon>
           <span>商品审核</span>
         </el-menu-item>
-        <el-menu-item index="/admin/users">
+        <el-menu-item v-if="auth.isSystemReviewer" index="/admin/reports">
+          <el-icon><Warning /></el-icon>
+          <span>举报审核</span>
+        </el-menu-item>
+        <el-menu-item v-if="auth.isSystemReviewer" index="/admin/users">
           <el-icon><User /></el-icon>
           <span>用户管理</span>
         </el-menu-item>
-        <el-menu-item index="/admin/lockers">
+        <el-menu-item v-if="auth.isSystemReviewer" index="/admin/lockers">
           <el-icon><Box /></el-icon>
           <span>柜机管理</span>
         </el-menu-item>
@@ -43,10 +30,9 @@
       <el-header class="admin-header">
         <div class="header-left">
           <h1>{{ pageTitle }}</h1>
-          <span class="header-tag">审核员专用</span>
+          <el-tag type="info" effect="plain">{{ roleLabel }}</el-tag>
         </div>
         <div class="header-right">
-          <el-button text @click="$router.push('/')">返回用户端</el-button>
           <el-dropdown trigger="click" @command="handleCommand">
             <span class="admin-user">
               <el-icon><UserFilled /></el-icon>
@@ -78,11 +64,17 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const pageTitle = computed(() => {
-  if (route.path.startsWith('/admin/reports')) return '举报审核'
   if (route.path.startsWith('/admin/products')) return '商品审核'
+  if (route.path.startsWith('/admin/reports')) return '举报审核'
   if (route.path.startsWith('/admin/users')) return '用户管理'
   if (route.path.startsWith('/admin/lockers')) return '柜机管理'
   return '审核工作台'
+})
+
+const roleLabel = computed(() => {
+  if (auth.role === 'PRODUCT_REVIEWER') return '商品审核员'
+  if (auth.role === 'SYS_ADMIN') return '超级管理员'
+  return '系统审核员'
 })
 
 function handleCommand(command: string) {
@@ -96,34 +88,16 @@ function handleCommand(command: string) {
 <style scoped>
 .admin-layout {
   min-height: 100vh;
-  background: #f1f5f9;
 }
 .admin-sidebar {
-  background: #0f172a;
-  border-right: 1px solid #1e293b;
+  border-right: 1px solid #e2e8f0;
+  background: #fff;
 }
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 22px 18px;
-  color: #fff;
-}
-.brand-badge {
-  background: #ef4444;
-  color: #fff;
-  font-size: 12px;
+  padding: 20px 16px;
+  font-size: 18px;
   font-weight: 700;
-  padding: 6px 8px;
-  border-radius: 8px;
-}
-.brand strong {
-  display: block;
-  font-size: 16px;
-}
-.brand small {
-  color: #94a3b8;
-  font-size: 12px;
+  color: #0f766e;
 }
 .admin-menu {
   border-right: none;
@@ -132,48 +106,40 @@ function handleCommand(command: string) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #fff;
+  gap: 12px;
   border-bottom: 1px solid #e2e8f0;
-  height: 64px;
-  padding: 0 24px;
+  background: #fff;
 }
-.header-left {
+.header-left,
+.header-right,
+.admin-user {
   display: flex;
   align-items: center;
-  gap: 12px;
+}
+.header-left {
+  gap: 10px;
 }
 .header-left h1 {
   margin: 0;
   font-size: 20px;
   color: #0f172a;
 }
-.header-tag {
-  background: #fef2f2;
-  color: #dc2626;
-  font-size: 12px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-weight: 600;
-}
 .header-right {
-  display: flex;
-  align-items: center;
   gap: 8px;
 }
 .admin-user {
-  display: inline-flex;
-  align-items: center;
   gap: 6px;
   cursor: pointer;
   color: #334155;
   font-weight: 600;
-  padding: 8px 10px;
+  padding: 6px 10px;
   border-radius: 8px;
 }
 .admin-user:hover {
-  background: #f8fafc;
+  background: #f1f5f9;
 }
 .admin-main {
-  padding: 24px;
+  background: #f8fafc;
+  padding: 20px 24px;
 }
 </style>

@@ -2,6 +2,7 @@ package com.swapcampus.admin.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.swapcampus.admin.dto.HandleReportRequest;
+import com.swapcampus.admin.dto.ProductReviewRequest;
 import com.swapcampus.admin.service.AdminModerationService;
 import com.swapcampus.admin.vo.AdminDashboardResponse;
 import com.swapcampus.admin.vo.AdminReportDetailResponse;
@@ -24,8 +25,13 @@ import com.swapcampus.common.exception.BusinessException;
 import com.swapcampus.common.exception.ErrorCode;
 import com.swapcampus.order.entity.OrderEntity;
 import com.swapcampus.order.mapper.OrderMapper;
+import com.swapcampus.product.entity.CategoryEntity;
 import com.swapcampus.product.entity.ProductEntity;
+import com.swapcampus.product.entity.ProductImageEntity;
+import com.swapcampus.product.mapper.CategoryMapper;
+import com.swapcampus.product.mapper.ProductImageMapper;
 import com.swapcampus.product.mapper.ProductMapper;
+import com.swapcampus.product.vo.ProductResponse;
 import com.swapcampus.report.entity.ReportActionEntity;
 import com.swapcampus.report.entity.ReportEntity;
 import com.swapcampus.report.mapper.ReportActionMapper;
@@ -44,6 +50,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -64,6 +71,8 @@ public class AdminModerationServiceImpl implements AdminModerationService {
     private final UserModerationService userModerationService;
     private final ChatWebSocketSessionRegistry sessionRegistry;
     private final AuditLogService auditLogService;
+    private final CategoryMapper categoryMapper;
+    private final ProductImageMapper productImageMapper;
 
     public AdminModerationServiceImpl(ReportMapper reportMapper,
                                       ReportActionMapper reportActionMapper,
@@ -75,7 +84,9 @@ public class AdminModerationServiceImpl implements AdminModerationService {
                                       AuditMapper auditMapper,
                                       UserModerationService userModerationService,
                                       ChatWebSocketSessionRegistry sessionRegistry,
-                                      AuditLogService auditLogService) {
+                                      AuditLogService auditLogService,
+                                      CategoryMapper categoryMapper,
+                                      ProductImageMapper productImageMapper) {
         this.reportMapper = reportMapper;
         this.reportActionMapper = reportActionMapper;
         this.chatMessageMapper = chatMessageMapper;
@@ -87,6 +98,8 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         this.userModerationService = userModerationService;
         this.sessionRegistry = sessionRegistry;
         this.auditLogService = auditLogService;
+        this.categoryMapper = categoryMapper;
+        this.productImageMapper = productImageMapper;
     }
 
     @Override
@@ -113,6 +126,45 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         response.setTotalGmv(sumCompletedGmv(null));
         response.setTodayGmv(sumCompletedGmv(startOfDay));
         return response;
+    }
+
+    @Override
+    public List<ProductResponse> listPendingProducts() {
+        return productMapper.selectList(new LambdaQueryWrapper<ProductEntity>()
+                        .eq(ProductEntity::getStatus, ProductStatus.PENDING_REVIEW.name())
+                        .orderByAsc(ProductEntity::getCreatedAt)
+                        .last("OFFSET 0 ROWS FETCH NEXT 100 ROWS ONLY"))
+                .stream()
+                .map(this::toProductResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse approveProduct(Long reviewerId, Long productId) {
+        ProductEntity product = requireReviewableProduct(productId);
+        product.setStatus(ProductStatus.ACTIVE.name());
+        product.setAuditReason(null);
+        product.setUpdatedAt(LocalDateTime.now());
+        productMapper.updateById(product);
+        auditLogService.record(reviewerId, "PRODUCT_APPROVE", "PRODUCT", productId, "商品审核通过");
+        return toProductResponse(product);
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse rejectProduct(Long reviewerId, Long productId, ProductReviewRequest request) {
+        ProductEntity product = requireReviewableProduct(productId);
+        String reason = request == null ? null : normalizeToNull(request.getReason());
+        if (reason == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "拒绝原因不能为空");
+        }
+        product.setStatus(ProductStatus.REVIEW_REJECTED.name());
+        product.setAuditReason(reason);
+        product.setUpdatedAt(LocalDateTime.now());
+        productMapper.updateById(product);
+        auditLogService.record(reviewerId, "PRODUCT_REJECT", "PRODUCT", productId, reason);
+        return toProductResponse(product);
     }
 
     @Override
@@ -258,7 +310,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         if (user == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "用户不存在");
         }
-        if (user.getRole() == Role.ADMIN || user.getRole() == Role.SYS_ADMIN) {
+        if (user.getRole() == Role.PRODUCT_REVIEWER || user.getRole() == Role.ADMIN || user.getRole() == Role.SYS_ADMIN) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "不能处置管理员账号");
         }
         return user;
@@ -289,6 +341,68 @@ public class AdminModerationServiceImpl implements AdminModerationService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "举报记录不存在");
         }
         return report;
+    }
+
+    private ProductEntity requireReviewableProduct(Long productId) {
+        ProductEntity product = productMapper.selectById(productId);
+        if (product == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "商品不存在");
+        }
+        if (!ProductStatus.PENDING_REVIEW.name().equals(product.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "只能审核待审核商品");
+        }
+        return product;
+    }
+
+    private ProductResponse toProductResponse(ProductEntity product) {
+        ProductResponse response = new ProductResponse();
+        response.setId(product.getId());
+        response.setSellerId(product.getSellerId());
+        response.setCategoryId(product.getCategoryId());
+        response.setTitle(product.getTitle());
+        response.setDescription(product.getDescription());
+        response.setPrice(product.getPrice());
+        response.setOriginalPrice(product.getOriginalPrice());
+        response.setConditionLevel(product.getConditionLevel());
+        response.setCampus(product.getCampus());
+        response.setTradeModes(parseTradeModes(product.getTradeModes()));
+        response.setStatus(product.getStatus());
+        response.setViewCount(product.getViewCount());
+        response.setFavoriteCount(product.getFavoriteCount());
+        response.setAuditReason(product.getAuditReason());
+        response.setCreatedAt(product.getCreatedAt());
+        response.setUpdatedAt(product.getUpdatedAt());
+
+        CategoryEntity category = categoryMapper.selectById(product.getCategoryId());
+        if (category != null) {
+            response.setCategoryName(category.getName());
+        }
+        response.setImageUrls(productImageMapper.selectList(new LambdaQueryWrapper<ProductImageEntity>()
+                        .eq(ProductImageEntity::getProductId, product.getId())
+                        .orderByAsc(ProductImageEntity::getSortOrder)
+                        .orderByAsc(ProductImageEntity::getId))
+                .stream()
+                .map(ProductImageEntity::getUrl)
+                .toList());
+        return response;
+    }
+
+    private List<String> parseTradeModes(String tradeModes) {
+        if (tradeModes == null || tradeModes.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(tradeModes.split(","))
+                .map(String::trim)
+                .filter(item -> !item.isEmpty())
+                .toList();
+    }
+
+    private String normalizeToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private List<ChatMessageResponse> loadContextMessages(Long messageId) {

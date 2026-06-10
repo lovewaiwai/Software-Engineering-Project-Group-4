@@ -12,14 +12,17 @@ import com.swapcampus.user.config.UserVerificationProperties;
 import com.swapcampus.user.dto.UserProfileUpdateRequest;
 import com.swapcampus.user.dto.UserStudentVerifyRequest;
 import com.swapcampus.user.entity.CreditRecordEntity;
+import com.swapcampus.user.entity.StudentIdentityEntity;
 import com.swapcampus.user.entity.UserEntity;
 import com.swapcampus.user.entity.UserProfileEntity;
 import com.swapcampus.user.mapper.CreditRecordMapper;
+import com.swapcampus.user.mapper.StudentIdentityMapper;
 import com.swapcampus.user.mapper.UserMapper;
 import com.swapcampus.user.mapper.UserProfileMapper;
 import com.swapcampus.user.service.UserService;
 import com.swapcampus.user.vo.CreditRecordResponse;
 import com.swapcampus.user.vo.UserResponse;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,19 +38,25 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final UserProfileMapper userProfileMapper;
     private final CreditRecordMapper creditRecordMapper;
+    private final StudentIdentityMapper studentIdentityMapper;
     private final AuditLogService auditLogService;
     private final UserVerificationProperties verificationProperties;
+    private final PasswordEncoder passwordEncoder;
 
     public UserServiceImpl(UserMapper userMapper,
                            UserProfileMapper userProfileMapper,
                            CreditRecordMapper creditRecordMapper,
+                           StudentIdentityMapper studentIdentityMapper,
                            AuditLogService auditLogService,
-                           UserVerificationProperties verificationProperties) {
+                           UserVerificationProperties verificationProperties,
+                           PasswordEncoder passwordEncoder) {
         this.userMapper = userMapper;
         this.userProfileMapper = userProfileMapper;
         this.creditRecordMapper = creditRecordMapper;
+        this.studentIdentityMapper = studentIdentityMapper;
         this.auditLogService = auditLogService;
         this.verificationProperties = verificationProperties;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -83,6 +92,7 @@ public class UserServiceImpl implements UserService {
         userMapper.updateById(user);
 
         applyIfPresent(request.getBio(), profile::setBio);
+        applyIfPresent(request.getAvatarUrl(), profile::setAvatarUrl);
         saveProfile(profile);
 
         auditLogService.record(userId, "USER_PROFILE_UPDATE", "USER", user.getId(), "更新个人资料");
@@ -98,17 +108,29 @@ public class UserServiceImpl implements UserService {
 
         String realName = requireText(request.getRealName(), "姓名不能为空");
         String studentNo = requireText(request.getStudentNo(), "学号不能为空");
-        String college = requireText(request.getCollege(), "学院不能为空");
-        String grade = requireText(request.getGrade(), "年级不能为空");
+        String eduPassword = requireText(request.getEduPassword(), "教务系统密码不能为空");
 
         validateStudentNo(studentNo);
+        StudentIdentityEntity identity = studentIdentityMapper.selectOne(
+                new LambdaQueryWrapper<StudentIdentityEntity>()
+                        .eq(StudentIdentityEntity::getStudentNo, studentNo)
+                        .eq(StudentIdentityEntity::getStatus, "ACTIVE")
+        );
+        if (identity == null || !realName.equals(identity.getRealName())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "学号或姓名不匹配");
+        }
+        if (!passwordEncoder.matches(eduPassword, identity.getEduPasswordHash())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "教务系统密码不正确");
+        }
 
-        profile.setRealName(realName);
-        profile.setStudentNo(studentNo);
-        profile.setCollege(college);
-        profile.setGrade(grade);
+        ensureStudentNoAvailable(studentNo, userId);
+
+        profile.setRealName(identity.getRealName());
+        profile.setStudentNo(identity.getStudentNo());
+        profile.setCollege(identity.getCollege());
+        profile.setGrade(identity.getGrade());
         profile.setVerifiedAt(LocalDateTime.now(SHANGHAI));
-        profile.setContactMasked(maskStudentNo(studentNo));
+        profile.setContactMasked(maskStudentNo(identity.getStudentNo()));
 
         saveProfile(profile);
         auditLogService.record(userId, "USER_STUDENT_VERIFY", "USER", user.getId(), "学号实名验证");
@@ -184,6 +206,17 @@ public class UserServiceImpl implements UserService {
             userProfileMapper.insert(profile);
         } else {
             userProfileMapper.updateById(profile);
+        }
+    }
+
+    private void ensureStudentNoAvailable(String studentNo, Long userId) {
+        UserProfileEntity existing = userProfileMapper.selectOne(
+                new LambdaQueryWrapper<UserProfileEntity>()
+                        .eq(UserProfileEntity::getStudentNo, studentNo)
+                        .ne(UserProfileEntity::getUserId, userId)
+        );
+        if (existing != null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "该学号已绑定其他账号");
         }
     }
 

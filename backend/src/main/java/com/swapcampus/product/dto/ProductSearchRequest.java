@@ -11,6 +11,7 @@ public class ProductSearchRequest {
     private String conditionLevel;
     private String campus;
     private String tradeMode;
+    private String status;
     private String sort;
     private long page = 1;
     private long pageSize = 20;
@@ -69,6 +70,14 @@ public class ProductSearchRequest {
 
     public void setTradeMode(String tradeMode) {
         this.tradeMode = tradeMode;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public String getSort() {

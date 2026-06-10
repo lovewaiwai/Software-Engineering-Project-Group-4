@@ -22,6 +22,7 @@ import com.swapcampus.common.moderation.ContentModerationService;
 import com.swapcampus.user.entity.UserEntity;
 import com.swapcampus.user.mapper.UserMapper;
 import com.swapcampus.user.service.UserModerationService;
+import com.swapcampus.user.service.UserVerificationGuard;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +42,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMessageMapper chatMessageMapper;
     private final UserMapper userMapper;
     private final UserModerationService userModerationService;
+    private final UserVerificationGuard userVerificationGuard;
     private final ContentModerationService contentModerationService;
     private final ChatWebSocketSessionRegistry sessionRegistry;
     private final ObjectMapper objectMapper;
@@ -49,6 +51,7 @@ public class ChatServiceImpl implements ChatService {
                            ChatMessageMapper chatMessageMapper,
                            UserMapper userMapper,
                            UserModerationService userModerationService,
+                           UserVerificationGuard userVerificationGuard,
                            ContentModerationService contentModerationService,
                            ChatWebSocketSessionRegistry sessionRegistry,
                            ObjectMapper objectMapper) {
@@ -56,6 +59,7 @@ public class ChatServiceImpl implements ChatService {
         this.chatMessageMapper = chatMessageMapper;
         this.userMapper = userMapper;
         this.userModerationService = userModerationService;
+        this.userVerificationGuard = userVerificationGuard;
         this.contentModerationService = contentModerationService;
         this.sessionRegistry = sessionRegistry;
         this.objectMapper = objectMapper;
@@ -69,6 +73,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public ChatSessionResponse createOrGetSession(Long userId, CreateSessionRequest request) {
+        userVerificationGuard.requireVerifiedStudent(userId);
         Long sellerId = request.getSellerId();
         if (Objects.equals(userId, sellerId)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "不能与自己发起聊天");
@@ -122,6 +127,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional
     public ChatMessageResponse sendMessage(Long userId, Long sessionId, SendMessageRequest request) {
+        userVerificationGuard.requireVerifiedStudent(userId);
         ChatSessionEntity session = requireParticipantSession(userId, sessionId);
         Long peerId = peerId(session, userId);
         userModerationService.ensureCanChat(userId, peerId);

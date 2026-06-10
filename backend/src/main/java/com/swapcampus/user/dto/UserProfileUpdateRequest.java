@@ -16,6 +16,9 @@ public class UserProfileUpdateRequest {
     @Size(max = 500, message = "个人简介不能超过500个字符")
     private String bio;
 
+    @Size(max = 500, message = "头像URL不能超过500个字符")
+    private String avatarUrl;
+
     public String getPhone() {
         return phone;
     }
@@ -38,5 +41,13 @@ public class UserProfileUpdateRequest {
 
     public void setBio(String bio) {
         this.bio = bio;
+    }
+
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
     }
 }

@@ -1,13 +1,437 @@
 package com.swapcampus.product.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.swapcampus.common.api.PageResponse;
+import com.swapcampus.common.enums.ProductStatus;
+import com.swapcampus.common.exception.BusinessException;
+import com.swapcampus.common.exception.ErrorCode;
+import com.swapcampus.common.security.CurrentUserContext;
+import com.swapcampus.product.dto.ProductImageRequest;
+import com.swapcampus.product.dto.ProductRequest;
+import com.swapcampus.product.dto.ProductSearchRequest;
+import com.swapcampus.product.entity.BrowseRecordEntity;
+import com.swapcampus.product.entity.CategoryEntity;
+import com.swapcampus.product.entity.ProductEntity;
+import com.swapcampus.product.entity.ProductFavoriteEntity;
+import com.swapcampus.product.entity.ProductImageEntity;
+import com.swapcampus.product.entity.TagEntity;
+import com.swapcampus.product.mapper.BrowseRecordMapper;
+import com.swapcampus.product.mapper.CategoryMapper;
+import com.swapcampus.product.mapper.ProductFavoriteMapper;
+import com.swapcampus.product.mapper.ProductImageMapper;
+import com.swapcampus.product.mapper.ProductMapper;
+import com.swapcampus.product.mapper.TagMapper;
 import com.swapcampus.product.service.ProductService;
+import com.swapcampus.product.vo.CategoryResponse;
+import com.swapcampus.product.vo.ProductResponse;
+import com.swapcampus.product.vo.TagResponse;
+import com.swapcampus.user.service.UserVerificationGuard;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
 
+    private static final long MAX_PAGE_SIZE = 100;
+
+    private final ProductMapper productMapper;
+    private final CategoryMapper categoryMapper;
+    private final TagMapper tagMapper;
+    private final ProductImageMapper productImageMapper;
+    private final ProductFavoriteMapper productFavoriteMapper;
+    private final BrowseRecordMapper browseRecordMapper;
+    private final UserVerificationGuard userVerificationGuard;
+
+    public ProductServiceImpl(ProductMapper productMapper,
+                              CategoryMapper categoryMapper,
+                              TagMapper tagMapper,
+                              ProductImageMapper productImageMapper,
+                              ProductFavoriteMapper productFavoriteMapper,
+                              BrowseRecordMapper browseRecordMapper,
+                              UserVerificationGuard userVerificationGuard) {
+        this.productMapper = productMapper;
+        this.categoryMapper = categoryMapper;
+        this.tagMapper = tagMapper;
+        this.productImageMapper = productImageMapper;
+        this.productFavoriteMapper = productFavoriteMapper;
+        this.browseRecordMapper = browseRecordMapper;
+        this.userVerificationGuard = userVerificationGuard;
+    }
+
     @Override
     public String moduleName() {
         return "product";
+    }
+
+    @Override
+    public List<CategoryResponse> listCategories() {
+        List<CategoryResponse> nodes = categoryMapper.selectList(new LambdaQueryWrapper<CategoryEntity>()
+                        .eq(CategoryEntity::getStatus, "ACTIVE")
+                        .orderByAsc(CategoryEntity::getSortOrder)
+                        .orderByAsc(CategoryEntity::getId))
+                .stream()
+                .map(this::toCategoryResponse)
+                .toList();
+        Map<Long, CategoryResponse> byId = nodes.stream()
+                .collect(Collectors.toMap(CategoryResponse::getId, item -> item, (a, b) -> a, LinkedHashMap::new));
+        List<CategoryResponse> roots = new ArrayList<>();
+        for (CategoryResponse node : nodes) {
+            if (node.getParentId() == null || !byId.containsKey(node.getParentId())) {
+                roots.add(node);
+            } else {
+                byId.get(node.getParentId()).getChildren().add(node);
+            }
+        }
+        return roots;
+    }
+
+    @Override
+    public List<TagResponse> listTags() {
+        return tagMapper.selectList(new LambdaQueryWrapper<TagEntity>()
+                        .eq(TagEntity::getStatus, "ACTIVE")
+                        .orderByAsc(TagEntity::getName))
+                .stream()
+                .map(this::toTagResponse)
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse create(ProductRequest request) {
+        Long sellerId = CurrentUserContext.requireUserId();
+        userVerificationGuard.requireVerifiedStudent(sellerId);
+        ensureCategoryExists(request.getCategoryId());
+        LocalDateTime now = LocalDateTime.now();
+        ProductEntity entity = new ProductEntity();
+        fillProduct(entity, request);
+        entity.setSellerId(sellerId);
+        entity.setStatus(ProductStatus.PENDING_REVIEW.name());
+        entity.setViewCount(0);
+        entity.setFavoriteCount(0);
+        entity.setCreatedAt(now);
+        entity.setUpdatedAt(now);
+        entity.setDeleted(false);
+        productMapper.insert(entity);
+        replaceImages(entity.getId(), request.getImageUrls());
+        return toResponse(entity, sellerId);
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse update(Long id, ProductRequest request) {
+        ProductEntity entity = requireProduct(id);
+        Long userId = CurrentUserContext.requireUserId();
+        userVerificationGuard.requireVerifiedStudent(userId);
+        if (!userId.equals(entity.getSellerId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "只能编辑自己发布的商品");
+        }
+        if (ProductStatus.LOCKED.name().equals(entity.getStatus()) || ProductStatus.SOLD.name().equals(entity.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "交易中的商品不能编辑");
+        }
+        ensureCategoryExists(request.getCategoryId());
+        fillProduct(entity, request);
+        entity.setStatus(ProductStatus.PENDING_REVIEW.name());
+        entity.setAuditReason(null);
+        entity.setUpdatedAt(LocalDateTime.now());
+        productMapper.updateById(entity);
+        replaceImages(entity.getId(), request.getImageUrls());
+        return toResponse(requireProduct(id), userId);
+    }
+
+    @Override
+    public ProductResponse detail(Long id) {
+        return toResponse(requireProduct(id), CurrentUserContext.currentUserId().orElse(null));
+    }
+
+    @Override
+    public PageResponse<ProductResponse> search(ProductSearchRequest request) {
+        long page = Math.max(1, request.getPage());
+        long pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, request.getPageSize()));
+        LambdaQueryWrapper<ProductEntity> wrapper = new LambdaQueryWrapper<ProductEntity>()
+                .eq(ProductEntity::getStatus, ProductStatus.ACTIVE.name());
+        if (StringUtils.hasText(request.getKeyword())) {
+            String keyword = request.getKeyword().trim();
+            wrapper.and(w -> w.like(ProductEntity::getTitle, keyword)
+                    .or()
+                    .like(ProductEntity::getDescription, keyword));
+        }
+        if (request.getCategoryId() != null) {
+            wrapper.eq(ProductEntity::getCategoryId, request.getCategoryId());
+        }
+        if (request.getMinPrice() != null) {
+            wrapper.ge(ProductEntity::getPrice, request.getMinPrice());
+        }
+        if (request.getMaxPrice() != null) {
+            wrapper.le(ProductEntity::getPrice, request.getMaxPrice());
+        }
+        if (StringUtils.hasText(request.getConditionLevel())) {
+            wrapper.eq(ProductEntity::getConditionLevel, request.getConditionLevel().trim());
+        }
+        if (StringUtils.hasText(request.getCampus())) {
+            wrapper.eq(ProductEntity::getCampus, request.getCampus().trim());
+        }
+        if (StringUtils.hasText(request.getTradeMode())) {
+            wrapper.like(ProductEntity::getTradeModes, request.getTradeMode().trim());
+        }
+        applySort(wrapper, request.getSort());
+
+        IPage<ProductEntity> result = productMapper.selectPage(new Page<>(page, pageSize), wrapper);
+        Long userId = CurrentUserContext.currentUserId().orElse(null);
+        List<ProductResponse> items = result.getRecords().stream()
+                .map(product -> toResponse(product, userId))
+                .toList();
+        return new PageResponse<>(items, page, pageSize, result.getTotal());
+    }
+
+    @Override
+    public PageResponse<ProductResponse> listMine(ProductSearchRequest request) {
+        Long userId = CurrentUserContext.requireUserId();
+        long page = Math.max(1, request.getPage());
+        long pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, request.getPageSize()));
+        LambdaQueryWrapper<ProductEntity> wrapper = new LambdaQueryWrapper<ProductEntity>()
+                .eq(ProductEntity::getSellerId, userId)
+                .orderByDesc(ProductEntity::getCreatedAt);
+        if (StringUtils.hasText(request.getStatus())) {
+            wrapper.eq(ProductEntity::getStatus, request.getStatus().trim());
+        }
+
+        IPage<ProductEntity> result = productMapper.selectPage(new Page<>(page, pageSize), wrapper);
+        List<ProductResponse> items = result.getRecords().stream()
+                .map(product -> toResponse(product, userId))
+                .toList();
+        return new PageResponse<>(items, page, pageSize, result.getTotal());
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse addImage(Long id, ProductImageRequest request) {
+        ProductEntity product = requireProduct(id);
+        Long userId = CurrentUserContext.requireUserId();
+        userVerificationGuard.requireVerifiedStudent(userId);
+        if (!userId.equals(product.getSellerId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "只能给自己发布的商品添加图片");
+        }
+        ProductImageEntity image = new ProductImageEntity();
+        image.setProductId(id);
+        image.setUrl(request.getUrl());
+        image.setSortOrder(Optional.ofNullable(request.getSortOrder()).orElse(0));
+        image.setCreatedAt(LocalDateTime.now());
+        productImageMapper.insert(image);
+        return toResponse(product, userId);
+    }
+
+    @Override
+    @Transactional
+    public void favorite(Long id) {
+        ProductEntity product = requireProduct(id);
+        if (!ProductStatus.ACTIVE.name().equals(product.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "只能收藏已上架商品");
+        }
+        Long userId = CurrentUserContext.requireUserId();
+        long exists = productFavoriteMapper.selectCount(new LambdaQueryWrapper<ProductFavoriteEntity>()
+                .eq(ProductFavoriteEntity::getUserId, userId)
+                .eq(ProductFavoriteEntity::getProductId, id));
+        if (exists > 0) {
+            return;
+        }
+        ProductFavoriteEntity favorite = new ProductFavoriteEntity();
+        favorite.setUserId(userId);
+        favorite.setProductId(id);
+        favorite.setCreatedAt(LocalDateTime.now());
+        productFavoriteMapper.insert(favorite);
+        productMapper.update(null, new LambdaUpdateWrapper<ProductEntity>()
+                .eq(ProductEntity::getId, id)
+                .setSql("favorite_count = favorite_count + 1")
+                .set(ProductEntity::getUpdatedAt, LocalDateTime.now()));
+    }
+
+    @Override
+    @Transactional
+    public void unfavorite(Long id) {
+        Long userId = CurrentUserContext.requireUserId();
+        int deleted = productFavoriteMapper.deleteFavorite(userId, id);
+        if (deleted > 0) {
+            productMapper.update(null, new LambdaUpdateWrapper<ProductEntity>()
+                    .eq(ProductEntity::getId, id)
+                    .setSql("favorite_count = CASE WHEN favorite_count > 0 THEN favorite_count - 1 ELSE 0 END")
+                    .set(ProductEntity::getUpdatedAt, LocalDateTime.now()));
+        }
+    }
+
+    @Override
+    @Transactional
+    public void recordView(Long id) {
+        ProductEntity product = requireProduct(id);
+        Long userId = CurrentUserContext.currentUserId().orElse(null);
+        BrowseRecordEntity record = new BrowseRecordEntity();
+        record.setUserId(userId);
+        record.setProductId(id);
+        record.setCategoryId(product.getCategoryId());
+        record.setCreatedAt(LocalDateTime.now());
+        browseRecordMapper.insert(record);
+        productMapper.update(null, new LambdaUpdateWrapper<ProductEntity>()
+                .eq(ProductEntity::getId, id)
+                .setSql("view_count = view_count + 1")
+                .set(ProductEntity::getUpdatedAt, LocalDateTime.now()));
+    }
+
+    private void fillProduct(ProductEntity entity, ProductRequest request) {
+        entity.setCategoryId(request.getCategoryId());
+        entity.setTitle(request.getTitle().trim());
+        entity.setDescription(request.getDescription());
+        entity.setPrice(request.getPrice());
+        entity.setOriginalPrice(request.getOriginalPrice());
+        entity.setConditionLevel(request.getConditionLevel().trim());
+        entity.setCampus(StringUtils.hasText(request.getCampus()) ? request.getCampus().trim() : null);
+        entity.setTradeModes(toTradeModes(request.getTradeModes()));
+    }
+
+    private String toTradeModes(List<String> tradeModes) {
+        if (tradeModes == null || tradeModes.isEmpty()) {
+            return "MEETUP";
+        }
+        return tradeModes.stream()
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .distinct()
+                .collect(Collectors.joining(","));
+    }
+
+    private void replaceImages(Long productId, List<String> imageUrls) {
+        productImageMapper.delete(new LambdaQueryWrapper<ProductImageEntity>()
+                .eq(ProductImageEntity::getProductId, productId));
+        if (imageUrls == null) {
+            return;
+        }
+        int order = 0;
+        for (String url : imageUrls) {
+            if (!StringUtils.hasText(url)) {
+                continue;
+            }
+            ProductImageEntity image = new ProductImageEntity();
+            image.setProductId(productId);
+            image.setUrl(url.trim());
+            image.setSortOrder(order++);
+            image.setCreatedAt(LocalDateTime.now());
+            productImageMapper.insert(image);
+        }
+    }
+
+    private ProductEntity requireProduct(Long id) {
+        ProductEntity entity = productMapper.selectById(id);
+        if (entity == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "商品不存在");
+        }
+        return entity;
+    }
+
+    private void ensureCategoryExists(Long categoryId) {
+        CategoryEntity category = categoryMapper.selectById(categoryId);
+        if (category == null || !"ACTIVE".equals(category.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "商品分类不可用");
+        }
+    }
+
+    private void applySort(LambdaQueryWrapper<ProductEntity> wrapper, String sort) {
+        if ("price_asc".equalsIgnoreCase(sort)) {
+            wrapper.orderByAsc(ProductEntity::getPrice).orderByDesc(ProductEntity::getCreatedAt);
+        } else if ("price_desc".equalsIgnoreCase(sort)) {
+            wrapper.orderByDesc(ProductEntity::getPrice).orderByDesc(ProductEntity::getCreatedAt);
+        } else if ("hot".equalsIgnoreCase(sort)) {
+            wrapper.orderByDesc(ProductEntity::getViewCount).orderByDesc(ProductEntity::getFavoriteCount);
+        } else {
+            wrapper.orderByDesc(ProductEntity::getCreatedAt);
+        }
+    }
+
+    public ProductResponse toResponse(ProductEntity entity, Long userId) {
+        ProductResponse response = new ProductResponse();
+        response.setId(entity.getId());
+        response.setSellerId(entity.getSellerId());
+        response.setCategoryId(entity.getCategoryId());
+        response.setCategoryName(categoryName(entity.getCategoryId()));
+        response.setTitle(entity.getTitle());
+        response.setDescription(entity.getDescription());
+        response.setPrice(entity.getPrice());
+        response.setOriginalPrice(entity.getOriginalPrice());
+        response.setConditionLevel(entity.getConditionLevel());
+        response.setCampus(entity.getCampus());
+        response.setTradeModes(splitTradeModes(entity.getTradeModes()));
+        response.setStatus(entity.getStatus());
+        response.setViewCount(entity.getViewCount());
+        response.setFavoriteCount(entity.getFavoriteCount());
+        response.setAuditReason(entity.getAuditReason());
+        response.setCreatedAt(entity.getCreatedAt());
+        response.setUpdatedAt(entity.getUpdatedAt());
+        response.setImageUrls(imageUrls(entity.getId()));
+        response.setFavorited(isFavorited(userId, entity.getId()));
+        return response;
+    }
+
+    private String categoryName(Long categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+        CategoryEntity category = categoryMapper.selectById(categoryId);
+        return category == null ? null : category.getName();
+    }
+
+    private List<String> imageUrls(Long productId) {
+        return productImageMapper.selectList(new LambdaQueryWrapper<ProductImageEntity>()
+                        .eq(ProductImageEntity::getProductId, productId)
+                        .orderByAsc(ProductImageEntity::getSortOrder)
+                        .orderByAsc(ProductImageEntity::getId))
+                .stream()
+                .map(ProductImageEntity::getUrl)
+                .toList();
+    }
+
+    private Boolean isFavorited(Long userId, Long productId) {
+        if (userId == null) {
+            return false;
+        }
+        return productFavoriteMapper.selectCount(new LambdaQueryWrapper<ProductFavoriteEntity>()
+                .eq(ProductFavoriteEntity::getUserId, userId)
+                .eq(ProductFavoriteEntity::getProductId, productId)) > 0;
+    }
+
+    private List<String> splitTradeModes(String tradeModes) {
+        if (!StringUtils.hasText(tradeModes)) {
+            return List.of();
+        }
+        return Arrays.stream(tradeModes.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .toList();
+    }
+
+    private CategoryResponse toCategoryResponse(CategoryEntity entity) {
+        CategoryResponse response = new CategoryResponse();
+        response.setId(entity.getId());
+        response.setParentId(entity.getParentId());
+        response.setName(entity.getName());
+        response.setSortOrder(entity.getSortOrder());
+        response.setChildren(new ArrayList<>());
+        return response;
+    }
+
+    private TagResponse toTagResponse(TagEntity entity) {
+        TagResponse response = new TagResponse();
+        response.setId(entity.getId());
+        response.setName(entity.getName());
+        return response;
     }
 }

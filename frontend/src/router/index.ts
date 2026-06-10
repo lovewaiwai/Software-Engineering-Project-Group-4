@@ -11,6 +11,7 @@ import HomeView from '../views/home/HomeView.vue'
 import ProductListView from '../views/product/ProductListView.vue'
 import ProductDetailView from '../views/product/ProductDetailView.vue'
 import ProductCreateView from '../views/product/ProductCreateView.vue'
+import MyProductsView from '../views/product/MyProductsView.vue'
 import OrderListView from '../views/order/OrderListView.vue'
 import OrderDetailView from '../views/order/OrderDetailView.vue'
 import ChatView from '../views/chat/ChatView.vue'
@@ -24,23 +25,25 @@ import AdminUsersView from '../views/admin/AdminUsersView.vue'
 import AdminLockersView from '../views/admin/AdminLockersView.vue'
 
 import { useAuthStore } from '../stores/auth'
+import { fetchCurrentUser } from '../api/user'
 
 
 const routes: RouteRecordRaw[] = [
   { path: '/login', component: LoginView, meta: { guest: true } },
   { path: '/register', component: RegisterView, meta: { guest: true } },
-  { path: '/verify', component: VerifyView },
+  { path: '/verify', component: VerifyView, meta: { requiresAuth: true, requiresUser: true } },
   {
     path: '/',
     component: AppLayout,
     children: [
       { path: '', component: HomeView },
       { path: 'products', component: ProductListView },
-      { path: 'products/new', component: ProductCreateView },
+      { path: 'products/new', component: ProductCreateView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
+      { path: 'products/mine', component: MyProductsView, meta: { requiresAuth: true, requiresUser: true } },
       { path: 'products/:id', component: ProductDetailView, props: true },
-      { path: 'orders', component: OrderListView },
-      { path: 'orders/:id', component: OrderDetailView, props: true },
-      { path: 'chat', component: ChatView, meta: { requiresAuth: true, requiresUser: true } },
+      { path: 'orders', component: OrderListView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
+      { path: 'orders/:id', component: OrderDetailView, props: true, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
+      { path: 'chat', component: ChatView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
       { path: 'profile/:id', component: ProfileView, props: true, meta: { requiresAuth: true } },
       { path: 'points', component: PointsView, meta: { requiresAuth: true, requiresUser: true } },
     ],
@@ -50,11 +53,11 @@ const routes: RouteRecordRaw[] = [
     component: AdminLayout,
     meta: { requiresAdmin: true },
     children: [
-      { path: '', component: AdminDashboardView },
-      { path: 'products', component: AdminProductsView },
-      { path: 'reports', component: AdminReportsView },
-      { path: 'users', component: AdminUsersView },
-      { path: 'lockers', component: AdminLockersView },
+      { path: '', component: AdminDashboardView, meta: { requiresSystemReviewer: true } },
+      { path: 'products', component: AdminProductsView, meta: { requiresProductReviewer: true } },
+      { path: 'reports', component: AdminReportsView, meta: { requiresSystemReviewer: true } },
+      { path: 'users', component: AdminUsersView, meta: { requiresSystemReviewer: true } },
+      { path: 'lockers', component: AdminLockersView, meta: { requiresSystemReviewer: true } },
     ],
   },
 ]
@@ -65,19 +68,42 @@ const router = createRouter({
 })
 
 function defaultHomePath(auth: ReturnType<typeof useAuthStore>) {
+  if (auth.role === 'PRODUCT_REVIEWER') return '/admin/products'
   return auth.isAdmin ? '/admin' : '/'
 }
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
+  if (auth.isAdmin && !to.path.startsWith('/admin') && !to.meta.guest) {
+    return { path: defaultHomePath(auth) }
+  }
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
-  if (to.meta.requiresAdmin && !auth.isAdmin) {
+  if (to.meta.requiresAdmin && (!auth.isLoggedIn || !auth.isAdmin)) {
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
+  if (to.meta.requiresSystemReviewer && !auth.isSystemReviewer) {
+    return auth.canReviewProducts ? { path: '/admin/products' } : { path: '/login', query: { redirect: to.fullPath } }
+  }
+  if (to.meta.requiresProductReviewer && !auth.canReviewProducts) {
     return { path: '/login', query: { redirect: to.fullPath } }
   }
   if (to.meta.requiresUser && auth.isAdmin) {
-    return { path: '/admin' }
+    return { path: defaultHomePath(auth) }
+  }
+  if (to.meta.requiresVerified && auth.isLoggedIn && !auth.isVerified) {
+    try {
+      const response = await fetchCurrentUser()
+      if (response.code === 0) {
+        auth.updateProfile(response.data.profile)
+      }
+    } catch {
+      // keep local state when refresh fails
+    }
+  }
+  if (to.meta.requiresVerified && auth.isLoggedIn && !auth.isVerified) {
+    return { path: '/verify', query: { redirect: to.fullPath } }
   }
   if (to.meta.guest && auth.isLoggedIn) {
     return defaultHomePath(auth)

@@ -3,7 +3,7 @@
     <div class="page-header">
       <div class="header-left">
         <div>
-          <p class="eyebrow">Points</p>
+          <p class="eyebrow">积分</p>
           <h1>积分中心</h1>
         </div>
         <div class="header-points">
@@ -11,7 +11,7 @@
           <strong>{{ currentUser?.pointBalance ?? 0 }}</strong>
         </div>
       </div>
-      <el-button :icon="Refresh" :loading="loading" @click="loadAll">刷新</el-button>
+      <el-button v-if="auth.userId" :icon="User" @click="router.push(`/profile/${auth.userId}`)">个人主页</el-button>
     </div>
 
     <section class="task-grid">
@@ -103,7 +103,8 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { Refresh } from '@element-plus/icons-vue'
+import { useRouter } from 'vue-router'
+import { Refresh, User } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   checkIn,
@@ -118,6 +119,7 @@ import type { PointItem, PointRecord, PointTask, UserInfo } from '../../api/type
 import { useAuthStore } from '../../stores/auth'
 
 const auth = useAuthStore()
+const router = useRouter()
 
 const currentUser = ref<UserInfo | null>(null)
 const tasks = ref<PointTask[]>([])

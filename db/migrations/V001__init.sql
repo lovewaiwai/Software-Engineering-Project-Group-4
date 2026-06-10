@@ -40,6 +40,17 @@ CREATE TABLE user_profiles (
   CONSTRAINT fk_user_profiles_user FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
+CREATE TABLE student_identities (
+  id BIGINT IDENTITY(1,1) PRIMARY KEY,
+  student_no NVARCHAR(30) NOT NULL,
+  real_name NVARCHAR(50) NOT NULL,
+  college NVARCHAR(80) NOT NULL,
+  grade NVARCHAR(20) NOT NULL,
+  edu_password_hash NVARCHAR(100) NOT NULL,
+  status NVARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  created_at DATETIME2(0) NOT NULL DEFAULT SYSDATETIME()
+);
+
 CREATE TABLE categories (
   id BIGINT IDENTITY(1,1) PRIMARY KEY,
   parent_id BIGINT NULL,
@@ -210,6 +221,8 @@ CREATE TABLE chat_messages (
   message_type NVARCHAR(20) NOT NULL DEFAULT 'TEXT',
   content NVARCHAR(MAX) NOT NULL,
   image_url NVARCHAR(500) NULL,
+  seq_no BIGINT NULL,
+  status NVARCHAR(20) NOT NULL DEFAULT 'SENT',
   read_at DATETIME2(0) NULL,
   created_at DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
   CONSTRAINT fk_chat_messages_session FOREIGN KEY (session_id) REFERENCES chat_sessions(id)
@@ -231,8 +244,12 @@ CREATE TABLE reports (
   reporter_id BIGINT NOT NULL,
   target_type NVARCHAR(30) NOT NULL,
   target_id BIGINT NOT NULL,
+  session_id BIGINT NULL,
+  reported_user_id BIGINT NULL,
   reason NVARCHAR(100) NOT NULL,
   description NVARCHAR(1000) NULL,
+  reject_reason NVARCHAR(500) NULL,
+  evidence_url NVARCHAR(500) NULL,
   status NVARCHAR(30) NOT NULL DEFAULT 'PENDING',
   created_at DATETIME2(0) NOT NULL DEFAULT SYSDATETIME()
 );
@@ -287,7 +304,8 @@ CREATE TABLE point_redemptions (
   item_name NVARCHAR(80) NOT NULL,
   cost_points INT NOT NULL,
   status NVARCHAR(20) NOT NULL DEFAULT 'SUCCESS',
-  created_at DATETIME2(0) NOT NULL DEFAULT SYSDATETIME()
+  created_at DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
+  CONSTRAINT fk_point_redemptions_user FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 CREATE TABLE ai_suggestion_logs (
@@ -314,10 +332,39 @@ CREATE TABLE audit_logs (
   created_at DATETIME2(0) NOT NULL DEFAULT SYSDATETIME()
 );
 
+CREATE TABLE user_mutes (
+  id BIGINT IDENTITY(1,1) PRIMARY KEY,
+  user_id BIGINT NOT NULL,
+  muted_by BIGINT NULL,
+  reason NVARCHAR(200) NULL,
+  muted_until DATETIME2(0) NOT NULL,
+  created_at DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
+  CONSTRAINT fk_user_mutes_user FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE user_blocks (
+  id BIGINT IDENTITY(1,1) PRIMARY KEY,
+  blocker_id BIGINT NOT NULL,
+  blocked_id BIGINT NOT NULL,
+  created_at DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
+  CONSTRAINT ux_user_blocks UNIQUE (blocker_id, blocked_id),
+  CONSTRAINT fk_user_blocks_blocker FOREIGN KEY (blocker_id) REFERENCES users(id),
+  CONSTRAINT fk_user_blocks_blocked FOREIGN KEY (blocked_id) REFERENCES users(id)
+);
+
 CREATE INDEX idx_products_search ON products(status, category_id, price, created_at);
 CREATE INDEX idx_orders_buyer ON orders(buyer_id, created_at);
 CREATE INDEX idx_orders_seller ON orders(seller_id, created_at);
 CREATE INDEX idx_chat_messages_session ON chat_messages(session_id, created_at);
+CREATE INDEX idx_chat_sessions_participants ON chat_sessions(buyer_id, seller_id, product_id);
 CREATE INDEX idx_browse_records_user ON browse_records(user_id, created_at);
 CREATE UNIQUE INDEX ux_user_profiles_student_no_not_null ON user_profiles(student_no) WHERE student_no IS NOT NULL;
+CREATE UNIQUE INDEX ux_student_identities_student_no ON student_identities(student_no);
+CREATE INDEX idx_student_identities_status ON student_identities(status);
+CREATE INDEX idx_user_mutes_user_until ON user_mutes(user_id, muted_until);
+CREATE UNIQUE INDEX ux_reports_reporter_target ON reports(reporter_id, target_type, target_id);
+CREATE INDEX idx_credit_records_user_created_at ON credit_records(user_id, created_at);
+CREATE INDEX idx_point_records_user_created_at ON point_records(user_id, created_at);
+CREATE INDEX idx_point_records_user_ref ON point_records(user_id, ref_type, ref_id);
+CREATE INDEX idx_point_redemptions_user_created_at ON point_redemptions(user_id, created_at);
 GO

@@ -11,6 +11,10 @@
           <el-icon><Goods /></el-icon>
           <span>商品</span>
         </el-menu-item>
+        <el-menu-item v-if="auth.isLoggedIn && !auth.isAdmin" index="/products/mine">
+          <el-icon><Goods /></el-icon>
+          <span>我的发布</span>
+        </el-menu-item>
         <el-menu-item index="/orders">
           <el-icon><Tickets /></el-icon>
           <span>订单</span>
