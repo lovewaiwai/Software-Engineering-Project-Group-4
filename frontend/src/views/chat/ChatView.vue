@@ -3,7 +3,10 @@
     <aside class="session-list">
       <div class="panel-head">
         <h3>消息</h3>
-        <span class="session-count">{{ sessions.length }}</span>
+        <div class="panel-head-meta">
+          <UnreadBadge v-if="chatNotify.totalUnread" :count="chatNotify.totalUnread" />
+          <span class="session-count">{{ sessions.length }}</span>
+        </div>
       </div>
       <el-skeleton v-if="loadingSessions" :rows="4" animated />
       <el-empty v-else-if="sessions.length === 0" description="暂无会话" :image-size="72" />
@@ -14,15 +17,17 @@
         :class="{ active: session.id === activeSessionId }"
         @click="selectSession(session.id)"
       >
-        <div class="avatar">{{ peerInitial(session.peerUsername) }}</div>
+        <div class="avatar-wrap">
+          <div class="avatar">{{ peerInitial(session.peerUsername) }}</div>
+          <UnreadBadge class="avatar-unread-badge" :count="session.unreadCount" />
+        </div>
         <div class="session-body">
           <div class="session-top">
             <strong>{{ session.peerUsername || `用户 ${session.peerId}` }}</strong>
             <span class="session-time">{{ formatMessageTime(session.lastMessageAt || session.createdAt) }}</span>
           </div>
           <div class="session-bottom">
-            <p>{{ session.lastPreview || '暂无消息' }}</p>
-            <el-badge v-if="session.unreadCount" :value="session.unreadCount" />
+            <p :class="{ unread: session.unreadCount > 0 }">{{ session.lastPreview || '暂无消息' }}</p>
           </div>
         </div>
       </button>
@@ -58,7 +63,7 @@
               class="bubble"
               :class="{
                 recalled: message.status === 'RECALLED',
-                'image-bubble': message.messageType === 'IMAGE' && message.status !== 'RECALLED',
+                'image-bubble': isMediaBubble(message),
               }"
             >
               <template v-if="message.status === 'RECALLED'">
@@ -73,7 +78,17 @@
                   @click="openImagePreview(message.imageUrl!)"
                 />
               </template>
-              <p v-else class="text-content">{{ message.content }}</p>
+              <template v-else-if="message.messageType === 'EMOJI'">
+                <img
+                  v-if="emojiMessageImage(message)"
+                  :src="emojiMessageImage(message)!"
+                  class="chat-sticker"
+                  :alt="emojiMessageLabel(message)"
+                  loading="lazy"
+                />
+                <span v-else class="emoji-fallback">{{ emojiMessageLabel(message) }}</span>
+              </template>
+              <p v-else class="text-content emoji-text">{{ message.content }}</p>
             </div>
             <div class="meta">
               <span>{{ formatMessageTime(message.createdAt) }}</span>
@@ -98,19 +113,55 @@
 
       <footer class="composer">
         <input ref="fileInputRef" type="file" accept="image/*" hidden @change="handleImageSelect" />
-        <el-button class="composer-tool" :icon="Picture" circle size="large" @click="fileInputRef?.click()" :loading="uploadingImage" />
-        <div class="composer-main">
+        <div ref="composerRef" class="composer-tools">
+          <el-button
+            class="composer-tool"
+            :icon="Picture"
+            circle
+            size="large"
+            title="发送图片"
+            @click="fileInputRef?.click()"
+            :loading="uploadingImage"
+          />
+          <el-button
+            class="composer-tool emoji-tool"
+            round
+            size="large"
+            title="表情"
+            :type="emojiPickerVisible ? 'primary' : 'default'"
+            @click.stop="toggleEmojiPicker"
+          >
+            <span class="emoji-btn-face">😊</span>
+            <span class="emoji-btn-label">表情</span>
+          </el-button>
+        </div>
+        <div ref="composerMainRef" class="composer-main">
+          <ChatEmojiPicker
+            :visible="emojiPickerVisible"
+            @pick-emoji="insertEmoji"
+            @pick-sticker="sendSticker"
+          />
           <el-input
             v-model="draft"
             type="textarea"
             :autosize="{ minRows: 2, maxRows: 6 }"
             placeholder="输入消息，Enter 发送，Shift+Enter 换行"
-            :disabled="uploadingImage"
+            :disabled="uploadingImage || sendingSticker"
             resize="none"
             @keydown="handleComposerKeydown"
+            @focus="emojiPickerVisible = false"
           />
         </div>
-        <el-button type="primary" size="large" class="send-btn" :loading="sendingText" @click="sendText">发送</el-button>
+        <el-button
+          type="primary"
+          size="large"
+          class="send-btn"
+          :loading="sendingText"
+          :disabled="sendingSticker"
+          @click="sendText"
+        >
+          发送
+        </el-button>
       </footer>
     </main>
 
@@ -145,22 +196,26 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Picture, MoreFilled } from '@element-plus/icons-vue'
 import ChatReportDrawer from '../../components/chat/ChatReportDrawer.vue'
+import ChatEmojiPicker from '../../components/chat/ChatEmojiPicker.vue'
+import UnreadBadge from '../../components/chat/UnreadBadge.vue'
 import type { ChatMessage, ChatSession, WsPayload } from '../../stores/chat'
 import {
-  connectChatSocket,
-  disconnectChatSocket,
   loadMessages,
   loadSessions,
   readSession,
   sendChatMessage,
   sendWsMessage,
+  subscribeChatSocket,
   uploadImage,
 } from '../../stores/chat'
 import { useAuthStore } from '../../stores/auth'
+import { useChatNotifyStore } from '../../stores/chatNotify'
+import { resolveSticker, type ChatSticker } from '../../constants/chatEmojis'
 import { formatMessageTime, peerInitial, resolveMediaUrl } from '../../utils/media'
 
 const route = useRoute()
 const auth = useAuthStore()
+const chatNotify = useChatNotifyStore()
 
 const sessions = ref<ChatSession[]>([])
 const messages = ref<ChatMessage[]>([])
@@ -168,15 +223,20 @@ const activeSessionId = ref<number | null>(null)
 const draft = ref('')
 const loadingSessions = ref(false)
 const sendingText = ref(false)
+const sendingSticker = ref(false)
 const uploadingImage = ref(false)
 const wsConnected = ref(false)
+const emojiPickerVisible = ref(false)
 const messageBoxRef = ref<HTMLElement | null>(null)
+const composerMainRef = ref<HTMLElement | null>(null)
+const composerRef = ref<HTMLElement | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const reportDrawerVisible = ref(false)
 const reportMode = ref<'message' | 'user'>('message')
 const reportingMessage = ref<ChatMessage | null>(null)
 const previewVisible = ref(false)
 const previewUrls = ref<string[]>([])
+let unsubscribeWs: (() => void) | null = null
 
 const activePeerName = computed(() => {
   const session = sessions.value.find((item) => item.id === activeSessionId.value)
@@ -197,6 +257,56 @@ function deliveryLabel(message: ChatMessage) {
   return message.status === 'READ' ? '已读' : '已发送'
 }
 
+function isMediaBubble(message: ChatMessage) {
+  if (message.status === 'RECALLED') return false
+  return message.messageType === 'IMAGE' || message.messageType === 'EMOJI'
+}
+
+function emojiMessageImage(message: ChatMessage) {
+  if (message.imageUrl) return resolveMediaUrl(message.imageUrl)
+  return resolveSticker(message.content)?.imageUrl ?? null
+}
+
+function emojiMessageLabel(message: ChatMessage) {
+  return resolveSticker(message.content)?.label ?? '[表情]'
+}
+
+function toggleEmojiPicker() {
+  emojiPickerVisible.value = !emojiPickerVisible.value
+}
+
+function insertEmoji(emoji: string) {
+  draft.value += emoji
+}
+
+async function sendSticker(sticker: ChatSticker) {
+  if (!activeSessionId.value) return
+  sendingSticker.value = true
+  emojiPickerVisible.value = false
+  try {
+    const fallback = await sendChatMessage(
+      activeSessionId.value,
+      'EMOJI',
+      sticker.id,
+      sticker.imageUrl,
+    )
+    if (fallback) upsertMessage(fallback)
+    await scrollToBottom()
+    await refreshSessions()
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '表情发送失败')
+  } finally {
+    sendingSticker.value = false
+  }
+}
+
+function handleDocumentClick(event: MouseEvent) {
+  if (!emojiPickerVisible.value) return
+  const target = event.target as Node | null
+  if (composerMainRef.value?.contains(target) || composerRef.value?.contains(target)) return
+  emojiPickerVisible.value = false
+}
+
 function upsertMessage(message: ChatMessage) {
   const index = messages.value.findIndex((item) => item.id === message.id)
   if (index >= 0) {
@@ -211,6 +321,7 @@ async function refreshSessions() {
   loadingSessions.value = true
   try {
     sessions.value = await loadSessions()
+    chatNotify.applySessions(sessions.value)
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载会话失败')
   } finally {
@@ -316,7 +427,8 @@ async function scrollToBottom() {
 }
 
 onMounted(async () => {
-  connectChatSocket(handleWsEvent)
+  document.addEventListener('click', handleDocumentClick)
+  unsubscribeWs = subscribeChatSocket(handleWsEvent)
   wsConnected.value = true
   await refreshSessions()
   const querySessionId = Number(route.query.sessionId)
@@ -326,7 +438,9 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  disconnectChatSocket()
+  document.removeEventListener('click', handleDocumentClick)
+  unsubscribeWs?.()
+  unsubscribeWs = null
 })
 
 watch(
@@ -370,6 +484,11 @@ watch(
 .panel-head h3 {
   margin: 0;
   font-size: 18px;
+}
+.panel-head-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .session-count {
   background: #eff6ff;
@@ -423,6 +542,19 @@ watch(
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.session-bottom p.unread {
+  color: #0f172a;
+  font-weight: 600;
+}
+.avatar-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.avatar-unread-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
 }
 .chat-panel {
   display: flex;
@@ -534,6 +666,11 @@ watch(
   color: inherit;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.1);
 }
+.message-row.mine .bubble:has(.chat-sticker) {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
 .bubble.recalled {
   background: #f1f5f9;
   color: #94a3b8;
@@ -551,6 +688,20 @@ watch(
   line-height: 1.5;
   font-size: 15px;
   white-space: pre-wrap;
+}
+.text-content.emoji-text {
+  font-size: 22px;
+  line-height: 1.4;
+}
+.chat-sticker {
+  display: block;
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+}
+.emoji-fallback {
+  font-size: 14px;
+  color: #64748b;
 }
 .chat-img {
   display: block;
@@ -584,9 +735,18 @@ watch(
   border-radius: 0 0 20px 20px;
   flex-shrink: 0;
 }
+.composer-tools {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
 .composer-main {
   flex: 1;
   min-width: 0;
+  position: relative;
 }
 .composer-main :deep(.el-textarea__inner) {
   min-height: 72px !important;
@@ -598,7 +758,21 @@ watch(
 }
 .composer-tool {
   flex-shrink: 0;
-  margin-bottom: 2px;
+}
+.emoji-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 14px !important;
+  height: 40px !important;
+}
+.emoji-btn-face {
+  font-size: 20px;
+  line-height: 1;
+}
+.emoji-btn-label {
+  font-size: 14px;
+  font-weight: 600;
 }
 .send-btn {
   flex-shrink: 0;

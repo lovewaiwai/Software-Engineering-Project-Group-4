@@ -276,11 +276,17 @@ public class ChatServiceImpl implements ChatService {
                 && (request.getImageUrl() == null || request.getImageUrl().isBlank())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "图片消息缺少图片地址");
         }
+        if (request.getMessageType() == MessageType.EMOJI && !request.hasContent()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "表情消息不能为空");
+        }
     }
 
     private String resolveContent(SendMessageRequest request) {
         if (request.getMessageType() == MessageType.IMAGE) {
             return request.getContent() == null ? "[图片]" : request.getContent();
+        }
+        if (request.getMessageType() == MessageType.EMOJI) {
+            return request.getContent() == null ? "[表情]" : request.getContent();
         }
         return request.getContent();
     }
@@ -299,6 +305,9 @@ public class ChatServiceImpl implements ChatService {
         }
         if (message.getMessageType() == MessageType.IMAGE) {
             return "[图片]";
+        }
+        if (message.getMessageType() == MessageType.EMOJI) {
+            return "[表情]";
         }
         String content = message.getContent();
         return content == null ? "" : (content.length() > 30 ? content.substring(0, 30) + "..." : content);

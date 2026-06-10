@@ -5,21 +5,22 @@
       <el-menu router :default-active="$route.path" class="nav-menu">
         <el-menu-item index="/">
           <el-icon><House /></el-icon>
-          <span>Home</span>
+          <span>首页</span>
         </el-menu-item>
         <el-menu-item index="/products">
           <el-icon><Goods /></el-icon>
-          <span>Products</span>
+          <span>商品</span>
         </el-menu-item>
         <el-menu-item index="/orders">
           <el-icon><Tickets /></el-icon>
-          <span>Orders</span>
+          <span>订单</span>
         </el-menu-item>
-        <el-menu-item v-if="!auth.isAdmin" index="/chat">
+        <el-menu-item v-if="!auth.isAdmin" index="/chat" class="chat-menu-item">
           <el-icon><ChatDotRound /></el-icon>
-          <span>Chat</span>
+          <span>聊天</span>
+          <UnreadBadge class="menu-edge-badge" :count="chatNotify.totalUnread" />
         </el-menu-item>
-                      </el-menu>
+      </el-menu>
     </el-aside>
     <el-container>
       <el-header class="app-header">
@@ -33,7 +34,6 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item v-if="auth.userId && !auth.isAdmin" :command="`/profile/${auth.userId}`">个人主页</el-dropdown-item>
-
               <el-dropdown-item v-if="!auth.isAdmin" command="/points">积分中心</el-dropdown-item>
               <el-dropdown-item v-if="auth.isAdmin" command="/admin">审核后台</el-dropdown-item>
               <el-dropdown-item divided command="logout">退出登录</el-dropdown-item>
@@ -49,16 +49,28 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ChatDotRound, Goods, House, Tickets, User } from '@element-plus/icons-vue'
+import UnreadBadge from '../components/chat/UnreadBadge.vue'
 import { fetchCurrentUser } from '../api/user'
 import { useAuthStore } from '../stores/auth'
+import { useChatNotifyStore } from '../stores/chatNotify'
 
 const router = useRouter()
 const auth = useAuthStore()
+const chatNotify = useChatNotifyStore()
+
+function syncChatNotify() {
+  if (auth.isLoggedIn && !auth.isAdmin) {
+    chatNotify.start()
+    return
+  }
+  chatNotify.stop()
+}
 
 onMounted(async () => {
+  syncChatNotify()
   if (!auth.isLoggedIn) return
   try {
     const response = await fetchCurrentUser()
@@ -70,8 +82,18 @@ onMounted(async () => {
   }
 })
 
+onUnmounted(() => {
+  chatNotify.stop()
+})
+
+watch(
+  () => [auth.isLoggedIn, auth.isAdmin] as const,
+  () => syncChatNotify(),
+)
+
 function handleCommand(command: string) {
   if (command === 'logout') {
+    chatNotify.stop()
     auth.clearSession()
     router.push('/login')
     return
@@ -95,6 +117,17 @@ function handleCommand(command: string) {
 }
 .nav-menu {
   border-right: none;
+}
+.nav-menu :deep(.chat-menu-item) {
+  position: relative;
+  overflow: visible;
+}
+.menu-edge-badge {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
 }
 .app-header {
   display: flex;

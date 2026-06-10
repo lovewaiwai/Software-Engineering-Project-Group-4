@@ -37,3 +37,15 @@ export function reportStatusLabel(status: string): string {
   if (status === 'REJECTED') return '已驳回'
   return status
 }
+
+export function formatCurrency(value?: number | string | null): string {
+  const amount = Number(value ?? 0)
+  if (Number.isNaN(amount)) return '¥0.00'
+  return `¥${amount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
+
+export function formatCount(value?: number | null): string {
+  const count = Number(value ?? 0)
+  if (Number.isNaN(count)) return '0'
+  return count.toLocaleString('zh-CN')
+}

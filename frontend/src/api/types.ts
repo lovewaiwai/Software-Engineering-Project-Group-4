@@ -94,6 +94,19 @@ export interface AdminDashboard {
   pendingReports: number
   todayReports: number
   activeChatUsers: number
+  totalUsers: number
+  activeUsers: number
+  bannedUsers: number
+  todayNewUsers: number
+  todayActiveUsers: number
+  totalProducts: number
+  activeProducts: number
+  todayNewProducts: number
+  totalOrders: number
+  completedOrders: number
+  todayNewOrders: number
+  totalGmv: number
+  todayGmv: number
 }
 
 export interface AdminReportDetail {
