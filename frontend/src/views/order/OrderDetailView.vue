@@ -48,19 +48,45 @@
             模拟支付成功
           </el-button>
 
-          <!-- 买家：已支付 面交 → 确认完成 -->
+          <!-- 买家：卖家已确认 面交 → 确认收货 或 申请退款 -->
           <el-button
-              v-if="isBuyer && order.status === 'PAID' && order.tradeMode === 'MEETUP'"
+              v-if="isBuyer && order.status === 'SELLER_CONFIRMED' && order.tradeMode === 'MEETUP'"
               type="success"
               :loading="actionLoading"
               @click="handleComplete"
           >
             确认收货
           </el-button>
-
-          <!-- 卖家：已支付 柜机 → 预约柜机 -->
           <el-button
-              v-if="isSeller && order.status === 'PAID' && order.tradeMode === 'LOCKER' && !delivery"
+              v-if="isBuyer && ['PAID', 'SELLER_CONFIRMED', 'DELIVERY_PENDING'].includes(order.status)"
+              type="danger"
+              plain
+              :loading="actionLoading"
+              @click="handleRefund"
+          >
+            申请退款
+          </el-button>
+          <!-- 卖家：已支付 → 确认或拒绝 -->
+          <el-button
+              v-if="isSeller && order.status === 'PAID'"
+              type="success"
+              :loading="actionLoading"
+              @click="handleSellerConfirm"
+          >
+            确认订单
+          </el-button>
+          <el-button
+              v-if="isSeller && order.status === 'PAID'"
+              type="danger"
+              plain
+              :loading="actionLoading"
+              @click="handleSellerReject"
+          >
+            拒绝订单（退款给买家）
+          </el-button>
+          <!-- 卖家：已确认 柜机 → 预约柜机 -->
+          <el-button
+              v-if="isSeller && order.status === 'SELLER_CONFIRMED' && order.tradeMode === 'LOCKER' && !delivery"
               type="primary"
               :loading="actionLoading"
               @click="handleReserveLocker"
@@ -88,16 +114,16 @@
             输入取件码取货
           </el-button>
 
-          <!-- 买家：已取件（订单已完成）→ 退款 -->
-          <el-button
-              v-if="isBuyer && order.status === 'PAID'"
-              type="danger"
-              plain
-              :loading="actionLoading"
-              @click="handleRefund"
-          >
-            申请退款
-          </el-button>
+<!--          &lt;!&ndash; 买家：已取件（订单已完成）→ 退款 &ndash;&gt;-->
+<!--          <el-button-->
+<!--              v-if="isBuyer && ['PAID', 'SELLER_CONFIRMED', 'DELIVERY_PENDING'].includes(order.status)"-->
+<!--              type="danger"-->
+<!--              plain-->
+<!--              :loading="actionLoading"-->
+<!--              @click="handleRefund"-->
+<!--          >-->
+<!--            申请退款-->
+<!--          </el-button>-->
 
           <!-- 买家：待支付 → 取消订单 -->
           <el-button
@@ -207,6 +233,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../../stores/auth'
 import {
   getOrder, cancelOrder, confirmComplete,
+  sellerConfirmOrder, sellerRejectOrder,
   createPayment, mockPayCallback, refundPayment,
   getPaymentByOrder,
   reserveLocker, confirmStored, confirmPickedUp, getDeliveryByOrder,
@@ -412,18 +439,67 @@ async function handleReview() {
   }
 }
 
+async function handleSellerConfirm() {
+  await ElMessageBox.confirm('确认接受这笔订单？', '确认订单', { type: 'warning' })
+  actionLoading.value = true
+  try {
+    const res = await sellerConfirmOrder(Number(props.id))
+    if (res.code === 0) {
+      order.value = res.data
+      ElMessage.success('已确认订单')
+    }
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message ?? '操作失败')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleSellerReject() {
+  await ElMessageBox.confirm('确认拒绝订单？买家支付金额将原路退回。', '拒绝订单', { type: 'warning' })
+  actionLoading.value = true
+  try {
+    const res = await sellerRejectOrder(Number(props.id))
+    if (res.code === 0) {
+      order.value = res.data
+      ElMessage.success('已拒绝订单，款项将退回买家')
+      await loadAll()
+    }
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message ?? '操作失败')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
 function statusLabel(status: string) {
   const map: Record<string, string> = {
-    CREATED: '待支付', PAID: '已支付', DELIVERY_PENDING: '配送中',
-    COMPLETED: '已完成', CANCELLED: '已取消', REFUNDING: '退款中', REFUNDED: '已退款',
+    CREATED: '待支付',
+    PAID: '已支付，待卖家确认',
+    SELLER_CONFIRMED: '卖家已确认',
+    SELLER_REJECTED: '卖家已拒绝',
+    DELIVERY_PENDING: '配送中',
+    COMPLETED: '已完成',
+    CANCELLED: '已取消',
+    REFUNDING: '退款中',
+    REFUNDED: '已退款',
+    DISPUTED: '争议中',
+    CLOSED: '已关闭',
   }
   return map[status] ?? status
 }
 
 function statusType(status: string): 'success' | 'warning' | 'danger' | 'info' | '' {
   const map: Record<string, 'success' | 'warning' | 'danger' | 'info' | ''> = {
-    CREATED: 'warning', PAID: '', DELIVERY_PENDING: '',
-    COMPLETED: 'success', CANCELLED: 'info', REFUNDING: 'warning', REFUNDED: 'info',
+    CREATED: 'warning',
+    PAID: 'warning',
+    SELLER_CONFIRMED: '',
+    SELLER_REJECTED: 'danger',
+    DELIVERY_PENDING: '',
+    COMPLETED: 'success',
+    CANCELLED: 'info',
+    REFUNDING: 'warning',
+    REFUNDED: 'info',
   }
   return map[status] ?? ''
 }

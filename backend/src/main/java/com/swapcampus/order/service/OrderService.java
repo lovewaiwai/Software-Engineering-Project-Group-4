@@ -10,4 +10,6 @@ public interface OrderService {
     List<OrderResponse> listMyOrders(Long currentUserId, String role);
     OrderResponse cancelOrder(Long orderId, Long currentUserId);
     OrderResponse confirmComplete(Long orderId, Long currentUserId);
+    OrderResponse sellerConfirm(Long orderId, Long sellerId);
+    OrderResponse sellerReject(Long orderId, Long sellerId);
 }

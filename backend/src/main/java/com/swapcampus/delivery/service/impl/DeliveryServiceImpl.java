@@ -55,8 +55,8 @@ public class DeliveryServiceImpl implements DeliveryService {
 
         OrderEntity order = requireOrder(request.getOrderId());
         requireSeller(order, currentUserId);
-        if (!OrderStatus.PAID.name().equals(order.getStatus())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "订单未支付，不能预约柜机");
+        if (!OrderStatus.SELLER_CONFIRMED.name().equals(order.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "卖家确认订单后才能预约柜机");
         }
 
         LockerReserveResult result = lockerAdapter.reserveBox(

@@ -140,3 +140,13 @@ export async function getReviewsByOrder(orderId: number) {
     const { data } = await apiClient.get<ApiResponse<Review[]>>(`/reviews/order/${orderId}`)
     return data
 }
+
+export async function sellerConfirmOrder(orderId: number) {
+    const { data } = await apiClient.post<ApiResponse<Order>>(`/orders/${orderId}/seller-confirm`)
+    return data
+}
+
+export async function sellerRejectOrder(orderId: number) {
+    const { data } = await apiClient.post<ApiResponse<Order>>(`/orders/${orderId}/seller-reject`)
+    return data
+}

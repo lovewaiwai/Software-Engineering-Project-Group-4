@@ -11,6 +11,7 @@ import com.swapcampus.review.entity.ReviewEntity;
 import com.swapcampus.review.mapper.ReviewMapper;
 import com.swapcampus.review.service.ReviewService;
 import com.swapcampus.review.vo.ReviewResponse;
+import com.swapcampus.user.service.UserService;
 import com.swapcampus.user.service.UserVerificationGuard;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,13 +27,16 @@ public class ReviewServiceImpl implements ReviewService {
     private final ReviewMapper reviewMapper;
     private final OrderMapper orderMapper;
     private final UserVerificationGuard userVerificationGuard;
+    private final UserService userService;
 
     public ReviewServiceImpl(ReviewMapper reviewMapper,
                              OrderMapper orderMapper,
-                             UserVerificationGuard userVerificationGuard) {
+                             UserVerificationGuard userVerificationGuard,
+                             UserService userService) {
         this.reviewMapper = reviewMapper;
         this.orderMapper = orderMapper;
         this.userVerificationGuard = userVerificationGuard;
+        this.userService = userService;
     }
 
     @Override
@@ -72,6 +76,24 @@ public class ReviewServiceImpl implements ReviewService {
         review.setContent(request.getContent());
         review.setCreatedAt(LocalDateTime.now());
         reviewMapper.insert(review);
+
+        // 根据评分调整被评价方信用分
+        // 4-5星：好评 +1分；1-2星：差评 -2分；3星：中评不变
+        int delta = 0;
+        if (request.getRating() >= 4) {
+            delta = 1;
+        } else if (request.getRating() <= 2) {
+            delta = -2;
+        }
+        if (delta != 0) {
+            userService.adjustCreditScore(
+                    revieweeId,
+                    delta,
+                    delta > 0 ? "获得好评" : "获得差评",
+                    "review",
+                    review.getId()
+            );
+        }
 
         return ReviewResponse.from(review);
     }
