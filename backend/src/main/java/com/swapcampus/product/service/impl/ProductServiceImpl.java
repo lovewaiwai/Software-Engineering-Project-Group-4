@@ -17,17 +17,21 @@ import com.swapcampus.product.entity.CategoryEntity;
 import com.swapcampus.product.entity.ProductEntity;
 import com.swapcampus.product.entity.ProductFavoriteEntity;
 import com.swapcampus.product.entity.ProductImageEntity;
+import com.swapcampus.product.entity.ProductTagEntity;
 import com.swapcampus.product.entity.TagEntity;
 import com.swapcampus.product.mapper.BrowseRecordMapper;
 import com.swapcampus.product.mapper.CategoryMapper;
 import com.swapcampus.product.mapper.ProductFavoriteMapper;
 import com.swapcampus.product.mapper.ProductImageMapper;
 import com.swapcampus.product.mapper.ProductMapper;
+import com.swapcampus.product.mapper.ProductTagMapper;
 import com.swapcampus.product.mapper.TagMapper;
 import com.swapcampus.product.service.ProductService;
 import com.swapcampus.product.vo.CategoryResponse;
 import com.swapcampus.product.vo.ProductResponse;
 import com.swapcampus.product.vo.TagResponse;
+import com.swapcampus.user.entity.UserEntity;
+import com.swapcampus.user.mapper.UserMapper;
 import com.swapcampus.user.service.UserVerificationGuard;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +57,8 @@ public class ProductServiceImpl implements ProductService {
     private final ProductImageMapper productImageMapper;
     private final ProductFavoriteMapper productFavoriteMapper;
     private final BrowseRecordMapper browseRecordMapper;
+    private final ProductTagMapper productTagMapper;
+    private final UserMapper userMapper;
     private final UserVerificationGuard userVerificationGuard;
 
     public ProductServiceImpl(ProductMapper productMapper,
@@ -61,6 +67,8 @@ public class ProductServiceImpl implements ProductService {
                               ProductImageMapper productImageMapper,
                               ProductFavoriteMapper productFavoriteMapper,
                               BrowseRecordMapper browseRecordMapper,
+                              ProductTagMapper productTagMapper,
+                              UserMapper userMapper,
                               UserVerificationGuard userVerificationGuard) {
         this.productMapper = productMapper;
         this.categoryMapper = categoryMapper;
@@ -68,6 +76,8 @@ public class ProductServiceImpl implements ProductService {
         this.productImageMapper = productImageMapper;
         this.productFavoriteMapper = productFavoriteMapper;
         this.browseRecordMapper = browseRecordMapper;
+        this.productTagMapper = productTagMapper;
+        this.userMapper = userMapper;
         this.userVerificationGuard = userVerificationGuard;
     }
 
@@ -113,12 +123,18 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse create(ProductRequest request) {
         Long sellerId = CurrentUserContext.requireUserId();
         userVerificationGuard.requireVerifiedStudent(sellerId);
-        ensureCategoryExists(request.getCategoryId());
+        ProductStatus status = createStatus(request);
+        if (status == ProductStatus.PENDING_REVIEW) {
+            validateRequestReadyForReview(request);
+        }
+        if (request.getCategoryId() != null) {
+            ensureCategoryExists(request.getCategoryId());
+        }
         LocalDateTime now = LocalDateTime.now();
         ProductEntity entity = new ProductEntity();
         fillProduct(entity, request);
         entity.setSellerId(sellerId);
-        entity.setStatus(ProductStatus.PENDING_REVIEW.name());
+        entity.setStatus(status.name());
         entity.setViewCount(0);
         entity.setFavoriteCount(0);
         entity.setCreatedAt(now);
@@ -126,6 +142,7 @@ public class ProductServiceImpl implements ProductService {
         entity.setDeleted(false);
         productMapper.insert(entity);
         replaceImages(entity.getId(), request.getImageUrls());
+        replaceTags(entity.getId(), request.getTagIds());
         return toResponse(entity, sellerId);
     }
 
@@ -141,13 +158,20 @@ public class ProductServiceImpl implements ProductService {
         if (ProductStatus.LOCKED.name().equals(entity.getStatus()) || ProductStatus.SOLD.name().equals(entity.getStatus())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "交易中的商品不能编辑");
         }
-        ensureCategoryExists(request.getCategoryId());
+        ProductStatus status = createStatus(request);
+        if (status == ProductStatus.PENDING_REVIEW) {
+            validateRequestReadyForReview(request);
+        }
+        if (request.getCategoryId() != null) {
+            ensureCategoryExists(request.getCategoryId());
+        }
         fillProduct(entity, request);
-        entity.setStatus(ProductStatus.PENDING_REVIEW.name());
+        entity.setStatus(status.name());
         entity.setAuditReason(null);
         entity.setUpdatedAt(LocalDateTime.now());
         productMapper.updateById(entity);
         replaceImages(entity.getId(), request.getImageUrls());
+        replaceTags(entity.getId(), request.getTagIds());
         return toResponse(requireProduct(id), userId);
     }
 
@@ -213,6 +237,51 @@ public class ProductServiceImpl implements ProductService {
                 .map(product -> toResponse(product, userId))
                 .toList();
         return new PageResponse<>(items, page, pageSize, result.getTotal());
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse submitForReview(Long id) {
+        Long userId = CurrentUserContext.requireUserId();
+        userVerificationGuard.requireVerifiedStudent(userId);
+        ProductEntity product = requireOwnedProduct(id, userId);
+        if (ProductStatus.LOCKED.name().equals(product.getStatus()) || ProductStatus.SOLD.name().equals(product.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "交易中的商品不能重新提交审核");
+        }
+        validateProductReadyForReview(product);
+        product.setStatus(ProductStatus.PENDING_REVIEW.name());
+        product.setAuditReason(null);
+        product.setUpdatedAt(LocalDateTime.now());
+        productMapper.updateById(product);
+        return toResponse(product, userId);
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse offline(Long id) {
+        Long userId = CurrentUserContext.requireUserId();
+        ProductEntity product = requireOwnedProduct(id, userId);
+        if (!ProductStatus.ACTIVE.name().equals(product.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "只有已上架商品可以下架");
+        }
+        product.setStatus(ProductStatus.OFFLINE.name());
+        product.setUpdatedAt(LocalDateTime.now());
+        productMapper.updateById(product);
+        return toResponse(product, userId);
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse relist(Long id) {
+        Long userId = CurrentUserContext.requireUserId();
+        ProductEntity product = requireOwnedProduct(id, userId);
+        if (!ProductStatus.OFFLINE.name().equals(product.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "只有已下架商品可以重新上架");
+        }
+        product.setStatus(ProductStatus.ACTIVE.name());
+        product.setUpdatedAt(LocalDateTime.now());
+        productMapper.updateById(product);
+        return toResponse(product, userId);
     }
 
     @Override
@@ -290,13 +359,87 @@ public class ProductServiceImpl implements ProductService {
 
     private void fillProduct(ProductEntity entity, ProductRequest request) {
         entity.setCategoryId(request.getCategoryId());
-        entity.setTitle(request.getTitle().trim());
-        entity.setDescription(request.getDescription());
+        entity.setTitle(StringUtils.hasText(request.getTitle()) ? request.getTitle().trim() : null);
+        entity.setDescription(StringUtils.hasText(request.getDescription()) ? request.getDescription().trim() : null);
         entity.setPrice(request.getPrice());
         entity.setOriginalPrice(request.getOriginalPrice());
-        entity.setConditionLevel(request.getConditionLevel().trim());
+        entity.setConditionLevel(StringUtils.hasText(request.getConditionLevel()) ? request.getConditionLevel().trim() : null);
         entity.setCampus(StringUtils.hasText(request.getCampus()) ? request.getCampus().trim() : null);
         entity.setTradeModes(toTradeModes(request.getTradeModes()));
+    }
+
+    private void validateRequestReadyForReview(ProductRequest request) {
+        if (!StringUtils.hasText(request.getTitle())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请填写商品标题");
+        }
+        if (!StringUtils.hasText(request.getDescription())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请填写商品描述");
+        }
+        if (request.getCategoryId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择商品分类");
+        }
+        if (request.getPrice() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请填写现价");
+        }
+        if (request.getOriginalPrice() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请填写原价");
+        }
+        if (!StringUtils.hasText(request.getConditionLevel())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择成色");
+        }
+        if (!StringUtils.hasText(request.getCampus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择校区");
+        }
+        if (request.getTradeModes() == null || request.getTradeModes().stream().noneMatch(StringUtils::hasText)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择交易方式");
+        }
+        if (request.getImageUrls() == null || request.getImageUrls().stream().noneMatch(StringUtils::hasText)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请至少上传一张商品图片");
+        }
+        if (request.getTagIds() == null || request.getTagIds().stream().noneMatch(id -> id != null && id > 0)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请至少选择一个商品标签");
+        }
+    }
+
+    private void validateProductReadyForReview(ProductEntity product) {
+        if (!StringUtils.hasText(product.getTitle())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请填写商品标题");
+        }
+        if (!StringUtils.hasText(product.getDescription())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请填写商品描述");
+        }
+        if (product.getCategoryId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择商品分类");
+        }
+        ensureCategoryExists(product.getCategoryId());
+        if (product.getPrice() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请填写现价");
+        }
+        if (product.getOriginalPrice() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请填写原价");
+        }
+        if (!StringUtils.hasText(product.getConditionLevel())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择成色");
+        }
+        if (!StringUtils.hasText(product.getCampus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择校区");
+        }
+        if (!StringUtils.hasText(product.getTradeModes())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择交易方式");
+        }
+        if (imageUrls(product.getId()).isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请至少上传一张商品图片");
+        }
+        if (productTags(product.getId()).isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请至少选择一个商品标签");
+        }
+    }
+
+    private ProductStatus createStatus(ProductRequest request) {
+        if ("DRAFT".equalsIgnoreCase(request.getStatus())) {
+            return ProductStatus.DRAFT;
+        }
+        return ProductStatus.PENDING_REVIEW;
     }
 
     private String toTradeModes(List<String> tradeModes) {
@@ -330,12 +473,34 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
+    private void replaceTags(Long productId, List<Long> tagIds) {
+        productTagMapper.deleteByProductId(productId);
+        if (tagIds == null) {
+            return;
+        }
+        for (Long tagId : tagIds.stream().filter(id -> id != null && id > 0).distinct().toList()) {
+            TagEntity tag = tagMapper.selectById(tagId);
+            if (tag == null || !"ACTIVE".equals(tag.getStatus())) {
+                continue;
+            }
+            productTagMapper.insertTag(productId, tagId);
+        }
+    }
+
     private ProductEntity requireProduct(Long id) {
         ProductEntity entity = productMapper.selectById(id);
         if (entity == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "商品不存在");
         }
         return entity;
+    }
+
+    private ProductEntity requireOwnedProduct(Long id, Long userId) {
+        ProductEntity product = requireProduct(id);
+        if (!userId.equals(product.getSellerId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "只能操作自己发布的商品");
+        }
+        return product;
     }
 
     private void ensureCategoryExists(Long categoryId) {
@@ -377,7 +542,11 @@ public class ProductServiceImpl implements ProductService {
         response.setCreatedAt(entity.getCreatedAt());
         response.setUpdatedAt(entity.getUpdatedAt());
         response.setImageUrls(imageUrls(entity.getId()));
+        List<TagEntity> tags = productTags(entity.getId());
+        response.setTagIds(tags.stream().map(TagEntity::getId).toList());
+        response.setTagNames(tags.stream().map(TagEntity::getName).toList());
         response.setFavorited(isFavorited(userId, entity.getId()));
+        applySellerCredit(response, entity.getSellerId());
         return response;
     }
 
@@ -397,6 +566,40 @@ public class ProductServiceImpl implements ProductService {
                 .stream()
                 .map(ProductImageEntity::getUrl)
                 .toList();
+    }
+
+    private List<TagEntity> productTags(Long productId) {
+        List<Long> tagIds = productTagMapper.selectList(new LambdaQueryWrapper<ProductTagEntity>()
+                        .eq(ProductTagEntity::getProductId, productId))
+                .stream()
+                .map(ProductTagEntity::getTagId)
+                .toList();
+        if (tagIds.isEmpty()) {
+            return List.of();
+        }
+        return tagMapper.selectList(new LambdaQueryWrapper<TagEntity>()
+                .in(TagEntity::getId, tagIds)
+                .eq(TagEntity::getStatus, "ACTIVE"));
+    }
+
+    private void applySellerCredit(ProductResponse response, Long sellerId) {
+        UserEntity seller = sellerId == null ? null : userMapper.selectById(sellerId);
+        int score = seller == null || seller.getCreditScore() == null ? 60 : seller.getCreditScore();
+        response.setSellerCreditScore(score);
+        response.setSellerCreditLevel(creditLevel(score));
+    }
+
+    public String creditLevel(int score) {
+        if (score >= 95) {
+            return "极好";
+        }
+        if (score >= 85) {
+            return "优秀";
+        }
+        if (score >= 60) {
+            return "良好";
+        }
+        return "极差";
     }
 
     private Boolean isFavorited(Long userId, Long productId) {

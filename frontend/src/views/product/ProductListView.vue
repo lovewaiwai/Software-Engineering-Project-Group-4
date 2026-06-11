@@ -75,6 +75,12 @@
                 <h2>{{ product.title }}</h2>
                 <el-tag size="small">{{ product.categoryName || '未分类' }}</el-tag>
               </div>
+              <div class="badge-row">
+                <el-tag v-if="product.sellerCreditLevel" size="small" type="success">
+                  信用{{ product.sellerCreditLevel }}
+                </el-tag>
+                <el-tag v-for="tag in product.tagNames || []" :key="tag" size="small" effect="plain">{{ tag }}</el-tag>
+              </div>
               <p class="desc">{{ product.description || '卖家暂未填写描述' }}</p>
               <div class="meta-row">
                 <strong>¥{{ money(product.price) }}</strong>
@@ -412,6 +418,12 @@ function tradeModeText(values?: string[]) {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 24px;
 }
 .meta-row strong {
   color: #ef4444;
