@@ -2,6 +2,7 @@ package com.swapcampus.admin.service.impl;
 
 import com.swapcampus.admin.dto.ProductReviewRequest;
 import com.swapcampus.admin.vo.AdminUserSummaryResponse;
+import com.swapcampus.audit.mapper.AuditMapper;
 import com.swapcampus.audit.service.AuditLogService;
 import com.swapcampus.chat.mapper.ChatMessageMapper;
 import com.swapcampus.chat.websocket.ChatWebSocketSessionRegistry;
@@ -10,6 +11,7 @@ import com.swapcampus.common.enums.Role;
 import com.swapcampus.common.enums.UserStatus;
 import com.swapcampus.common.exception.BusinessException;
 import com.swapcampus.common.exception.ErrorCode;
+import com.swapcampus.order.mapper.OrderMapper;
 import com.swapcampus.product.entity.CategoryEntity;
 import com.swapcampus.product.entity.ProductEntity;
 import com.swapcampus.product.entity.ProductImageEntity;
@@ -58,13 +60,17 @@ class AdminModerationServiceImplTest {
     @Mock
     private UserProfileMapper userProfileMapper;
     @Mock
+    private ProductMapper productMapper;
+    @Mock
+    private OrderMapper orderMapper;
+    @Mock
+    private AuditMapper auditMapper;
+    @Mock
     private UserModerationService userModerationService;
     @Mock
     private ChatWebSocketSessionRegistry sessionRegistry;
     @Mock
     private AuditLogService auditLogService;
-    @Mock
-    private ProductMapper productMapper;
     @Mock
     private CategoryMapper categoryMapper;
     @Mock
@@ -80,10 +86,12 @@ class AdminModerationServiceImplTest {
                 chatMessageMapper,
                 userMapper,
                 userProfileMapper,
+                productMapper,
+                orderMapper,
+                auditMapper,
                 userModerationService,
                 sessionRegistry,
                 auditLogService,
-                productMapper,
                 categoryMapper,
                 productImageMapper
         );
