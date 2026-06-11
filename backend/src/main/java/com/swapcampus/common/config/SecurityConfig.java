@@ -66,6 +66,7 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/swagger-ui/**"
                         ).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products/mine").authenticated()
                         .requestMatchers(HttpMethod.GET,
                                 "/api/categories",
                                 "/api/tags",

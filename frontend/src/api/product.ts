@@ -17,13 +17,13 @@ export interface TagItem {
 export interface ProductItem {
   id: number
   sellerId: number
-  categoryId: number
+  categoryId?: number
   categoryName?: string
-  title: string
+  title?: string
   description?: string
-  price: number
+  price?: number
   originalPrice?: number
-  conditionLevel: string
+  conditionLevel?: string
   campus?: string
   tradeModes: string[]
   status: string
@@ -33,8 +33,12 @@ export interface ProductItem {
   createdAt?: string
   updatedAt?: string
   imageUrls?: string[]
+  tagIds?: number[]
+  tagNames?: string[]
   favorited?: boolean
   recommendReason?: string
+  sellerCreditScore?: number
+  sellerCreditLevel?: string
 }
 
 export interface ProductSearchParams {
@@ -52,15 +56,17 @@ export interface ProductSearchParams {
 }
 
 export interface ProductPayload {
-  categoryId: number
-  title: string
+  categoryId?: number
+  title?: string
   description?: string
-  price: number
+  price?: number
   originalPrice?: number
-  conditionLevel: string
+  conditionLevel?: string
   campus?: string
-  tradeModes: string[]
-  imageUrls: string[]
+  tradeModes?: string[]
+  imageUrls?: string[]
+  tagIds?: number[]
+  status?: string
 }
 
 export interface AiProductSuggestionRequest {
@@ -112,6 +118,21 @@ export async function createProduct(payload: ProductPayload) {
 
 export async function updateProduct(id: number, payload: ProductPayload) {
   const { data } = await apiClient.put<ApiResponse<ProductItem>>(`/products/${id}`, payload)
+  return data
+}
+
+export async function submitProductForReview(id: number) {
+  const { data } = await apiClient.post<ApiResponse<ProductItem>>(`/products/${id}/submit-review`)
+  return data
+}
+
+export async function offlineProduct(id: number) {
+  const { data } = await apiClient.post<ApiResponse<ProductItem>>(`/products/${id}/offline`)
+  return data
+}
+
+export async function relistProduct(id: number) {
+  const { data } = await apiClient.post<ApiResponse<ProductItem>>(`/products/${id}/relist`)
   return data
 }
 

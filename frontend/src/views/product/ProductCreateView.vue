@@ -9,7 +9,7 @@
     </div>
 
     <div class="form-grid">
-      <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="publish-form">
+      <el-form ref="formRef" :model="form" :rules="activeRules" label-position="top" class="publish-form">
         <el-form-item label="商品标题" prop="title">
           <el-input v-model="form.title" maxlength="120" show-word-limit placeholder="例如：九成新高等数学教材" />
         </el-form-item>
@@ -31,6 +31,14 @@
               <el-option v-for="category in flatCategories" :key="category.id" :label="category.name" :value="category.id" />
             </el-select>
           </el-form-item>
+          <el-form-item label="商品标签" prop="tagIds">
+            <el-select v-model="form.tagIds" placeholder="请选择标签" multiple filterable>
+              <el-option v-for="tag in tags" :key="tag.id" :label="tag.name" :value="tag.id" />
+            </el-select>
+          </el-form-item>
+        </div>
+
+        <div class="two-col">
           <el-form-item label="成色" prop="conditionLevel">
             <el-select v-model="form.conditionLevel" placeholder="请选择成色">
               <el-option label="全新" value="NEW" />
@@ -80,7 +88,8 @@
         </el-form-item>
 
         <div class="submit-row">
-          <el-button type="primary" :loading="submitting" @click="submit">提交审核</el-button>
+          <el-button type="primary" :loading="submitting" @click="submit('PENDING_REVIEW')">提交审核</el-button>
+          <el-button :loading="submitting" @click="submit('DRAFT')">保存草稿</el-button>
           <el-button @click="resetForm">清空</el-button>
         </div>
       </el-form>
@@ -114,18 +123,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { ArrowLeft, Check, Delete, MagicStick, Upload } from '@element-plus/icons-vue'
 import {
   createProduct,
   listCategories,
+  listTags,
   suggestProduct,
   uploadProductImage,
   type AiProductSuggestion,
   type CategoryItem,
   type ProductPayload,
+  type TagItem,
 } from '../../api/product'
 import { useAuthStore } from '../../stores/auth'
 import { getApiErrorMessage } from '../../utils/apiError'
@@ -135,14 +146,23 @@ const router = useRouter()
 const auth = useAuthStore()
 const formRef = ref<FormInstance>()
 const categories = ref<CategoryItem[]>([])
+const tags = ref<TagItem[]>([])
 const submitting = ref(false)
 const suggesting = ref(false)
 const uploadingImage = ref(false)
 const suggestion = ref<AiProductSuggestion | null>(null)
 const fileInputRef = ref<HTMLInputElement>()
+const submitMode = ref<'PENDING_REVIEW' | 'DRAFT'>('PENDING_REVIEW')
 
-type ProductForm = Omit<ProductPayload, 'categoryId'> & {
+type ProductForm = Omit<ProductPayload, 'categoryId' | 'title' | 'description' | 'conditionLevel' | 'campus' | 'tradeModes' | 'imageUrls' | 'tagIds'> & {
   categoryId?: number
+  title: string
+  description: string
+  conditionLevel: string
+  campus: string
+  tradeModes: string[]
+  imageUrls: string[]
+  tagIds: number[]
 }
 
 const form = reactive<ProductForm>({
@@ -155,9 +175,10 @@ const form = reactive<ProductForm>({
   campus: '',
   tradeModes: ['MEETUP'],
   imageUrls: [],
+  tagIds: [],
 })
 
-const rules: FormRules = {
+const reviewRules: FormRules = {
   title: [{ required: true, message: '请输入商品标题', trigger: 'blur' }],
   description: [{ required: true, message: '请输入商品描述', trigger: 'blur' }],
   categoryId: [{ required: true, type: 'number', min: 1, message: '请选择分类', trigger: 'change' }],
@@ -167,9 +188,11 @@ const rules: FormRules = {
   campus: [{ required: true, message: '请选择校区', trigger: 'change' }],
   tradeModes: [{ required: true, type: 'array', min: 1, message: '请选择交易方式', trigger: 'change' }],
   imageUrls: [{ required: true, type: 'array', min: 1, message: '请至少上传一张商品图片', trigger: 'change' }],
+  tagIds: [{ required: true, type: 'array', min: 1, message: '请至少选择一个商品标签', trigger: 'change' }],
 }
 
 const flatCategories = computed(() => flattenCategories(categories.value))
+const activeRules = computed<FormRules>(() => (submitMode.value === 'DRAFT' ? {} : reviewRules))
 
 onMounted(async () => {
   if (!auth.isLoggedIn) {
@@ -180,15 +203,16 @@ onMounted(async () => {
     await router.push({ path: '/verify', query: { redirect: '/products/new' } })
     return
   }
-  await loadCategories()
+  await loadMeta()
 })
 
-async function loadCategories() {
+async function loadMeta() {
   try {
-    const response = await listCategories()
-    if (response.code === 0) categories.value = response.data
+    const [categoryResponse, tagResponse] = await Promise.all([listCategories(), listTags()])
+    if (categoryResponse.code === 0) categories.value = categoryResponse.data
+    if (tagResponse.code === 0) tags.value = tagResponse.data
   } catch (error) {
-    ElMessage.error(getApiErrorMessage(error, '加载分类失败'))
+    ElMessage.error(getApiErrorMessage(error, '加载分类标签失败'))
   }
 }
 
@@ -216,16 +240,26 @@ async function requestSuggestion() {
 function applySuggestion() {
   if (!suggestion.value) return
   if (suggestion.value.suggestedCategoryId) form.categoryId = suggestion.value.suggestedCategoryId
+  const matchedTagIds = tags.value
+    .filter((tag) => suggestion.value?.suggestedTags.includes(tag.name))
+    .map((tag) => tag.id)
+  if (matchedTagIds.length) form.tagIds = Array.from(new Set([...(form.tagIds ?? []), ...matchedTagIds]))
   if (suggestion.value.suggestedMinPrice && suggestion.value.suggestedMaxPrice) {
     form.price = Number(((suggestion.value.suggestedMinPrice + suggestion.value.suggestedMaxPrice) / 2).toFixed(2))
   }
   ElMessage.success('已应用 AI 建议')
 }
 
-async function submit() {
+async function submit(status: 'PENDING_REVIEW' | 'DRAFT') {
   if (!formRef.value) return
-  await formRef.value.validate()
-  if (!form.categoryId) {
+  submitMode.value = status
+  await nextTick()
+  if (status === 'PENDING_REVIEW') {
+    await formRef.value.validate()
+  } else {
+    formRef.value.clearValidate()
+  }
+  if (status === 'PENDING_REVIEW' && !form.categoryId) {
     ElMessage.warning('请选择分类')
     return
   }
@@ -234,14 +268,17 @@ async function submit() {
     const payload: ProductPayload = {
       ...form,
       categoryId: form.categoryId,
-      imageUrls: form.imageUrls.map((url) => url.trim()).filter(Boolean),
+      imageUrls: form.imageUrls?.map((url) => url.trim()).filter(Boolean),
+      tagIds: form.tagIds,
+      status,
       campus: form.campus?.trim() || undefined,
+      title: form.title?.trim() || undefined,
       description: form.description?.trim() || undefined,
     }
     const response = await createProduct(payload)
     if (response.code !== 0) throw new Error(response.message)
-    ElMessage.success('商品已提交审核')
-    await router.push(`/products/${response.data.id}`)
+    ElMessage.success(status === 'DRAFT' ? '草稿已保存' : '商品已提交审核')
+    await router.push('/products/mine')
   } catch (error) {
     ElMessage.error(getApiErrorMessage(error, '发布失败'))
   } finally {
@@ -259,6 +296,7 @@ function resetForm() {
   form.campus = ''
   form.tradeModes = ['MEETUP']
   form.imageUrls = []
+  form.tagIds = []
   suggestion.value = null
 }
 

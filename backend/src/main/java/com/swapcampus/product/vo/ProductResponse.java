@@ -25,8 +25,12 @@ public class ProductResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<String> imageUrls = new ArrayList<>();
+    private List<Long> tagIds = new ArrayList<>();
+    private List<String> tagNames = new ArrayList<>();
     private Boolean favorited;
     private String recommendReason;
+    private Integer sellerCreditScore;
+    private String sellerCreditLevel;
     private String module;
 
     public static ProductResponse placeholder(String module) {
@@ -188,6 +192,22 @@ public class ProductResponse {
         this.imageUrls = imageUrls;
     }
 
+    public List<Long> getTagIds() {
+        return tagIds;
+    }
+
+    public void setTagIds(List<Long> tagIds) {
+        this.tagIds = tagIds;
+    }
+
+    public List<String> getTagNames() {
+        return tagNames;
+    }
+
+    public void setTagNames(List<String> tagNames) {
+        this.tagNames = tagNames;
+    }
+
     public Boolean getFavorited() {
         return favorited;
     }
@@ -202,5 +222,21 @@ public class ProductResponse {
 
     public void setRecommendReason(String recommendReason) {
         this.recommendReason = recommendReason;
+    }
+
+    public Integer getSellerCreditScore() {
+        return sellerCreditScore;
+    }
+
+    public void setSellerCreditScore(Integer sellerCreditScore) {
+        this.sellerCreditScore = sellerCreditScore;
+    }
+
+    public String getSellerCreditLevel() {
+        return sellerCreditLevel;
+    }
+
+    public void setSellerCreditLevel(String sellerCreditLevel) {
+        this.sellerCreditLevel = sellerCreditLevel;
     }
 }

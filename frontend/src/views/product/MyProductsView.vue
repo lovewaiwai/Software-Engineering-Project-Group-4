@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h1>我的发布</h1>
-        <p>查看自己发布的商品，包括待审核、已上架和审核未通过的记录。</p>
+        <p>查看自己发布的商品，包括草稿、待审核、已上架、审核未通过和已下架记录。</p>
       </div>
       <el-button type="primary" :icon="Plus" @click="$router.push('/products/new')">发布商品</el-button>
     </div>
@@ -27,6 +27,10 @@
             <h2>{{ product.title }}</h2>
             <el-tag :type="statusType(product.status)">{{ statusText(product.status) }}</el-tag>
           </div>
+          <div class="badge-row">
+            <el-tag v-if="product.sellerCreditLevel" size="small" type="success">信用{{ product.sellerCreditLevel }}</el-tag>
+            <el-tag v-for="tag in product.tagNames || []" :key="tag" size="small" effect="plain">{{ tag }}</el-tag>
+          </div>
           <p>{{ product.description || '暂无描述' }}</p>
           <div class="meta">
             <strong>¥{{ money(product.price) }}</strong>
@@ -38,6 +42,11 @@
         </div>
         <div class="actions">
           <el-button @click="$router.push(`/products/${product.id}`)">查看详情</el-button>
+          <el-button v-if="product.status === 'DRAFT' || product.status === 'REVIEW_REJECTED'" type="primary" @click="changeStatus(product, 'submit')">
+            提交审核
+          </el-button>
+          <el-button v-if="product.status === 'ACTIVE'" type="warning" @click="changeStatus(product, 'offline')">下架</el-button>
+          <el-button v-if="product.status === 'OFFLINE'" type="success" @click="changeStatus(product, 'relist')">重新上架</el-button>
         </div>
       </article>
     </div>
@@ -57,7 +66,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Picture, Plus, Refresh } from '@element-plus/icons-vue'
-import { listMyProducts, type ProductItem } from '../../api/product'
+import { listMyProducts, offlineProduct, relistProduct, submitProductForReview, type ProductItem } from '../../api/product'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { resolveMediaUrl } from '../../utils/media'
 
@@ -68,9 +77,11 @@ const page = reactive({ page: 1, pageSize: 10, total: 0 })
 
 const statusOptions = [
   { label: '全部', value: '' },
+  { label: '草稿', value: 'DRAFT' },
   { label: '待审核', value: 'PENDING_REVIEW' },
   { label: '已上架', value: 'ACTIVE' },
   { label: '未通过', value: 'REVIEW_REJECTED' },
+  { label: '已下架', value: 'OFFLINE' },
   { label: '交易中', value: 'LOCKED' },
   { label: '已售出', value: 'SOLD' },
 ]
@@ -103,6 +114,22 @@ function reload() {
 function changePage(value: number) {
   page.page = value
   loadProducts()
+}
+
+async function changeStatus(product: ProductItem, action: 'submit' | 'offline' | 'relist') {
+  try {
+    const response =
+      action === 'submit'
+        ? await submitProductForReview(product.id)
+        : action === 'offline'
+          ? await offlineProduct(product.id)
+          : await relistProduct(product.id)
+    if (response.code !== 0) throw new Error(response.message)
+    ElMessage.success(action === 'offline' ? '商品已下架' : action === 'relist' ? '商品已重新上架' : '商品已提交审核')
+    await loadProducts()
+  } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '操作失败'))
+  }
 }
 
 function coverOf(product: ProductItem) {
@@ -205,7 +232,8 @@ function tradeModeText(values?: string[]) {
   gap: 8px;
 }
 .title-line,
-.meta {
+.meta,
+.badge-row {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -236,6 +264,11 @@ function tradeModeText(values?: string[]) {
   padding: 8px;
   font-size: 13px;
 }
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 @media (max-width: 760px) {
   .page-head,
   .toolbar {
@@ -253,6 +286,7 @@ function tradeModeText(values?: string[]) {
   }
   .actions .el-button {
     width: 100%;
+    margin-left: 0;
   }
 }
 </style>

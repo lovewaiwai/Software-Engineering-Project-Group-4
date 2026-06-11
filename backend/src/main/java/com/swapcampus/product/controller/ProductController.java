@@ -57,6 +57,21 @@ public class ProductController {
         return ApiResponse.ok(productService.update(id, request));
     }
 
+    @PostMapping("/products/{id}/submit-review")
+    public ApiResponse<ProductResponse> submitForReview(@PathVariable Long id) {
+        return ApiResponse.ok(productService.submitForReview(id));
+    }
+
+    @PostMapping("/products/{id}/offline")
+    public ApiResponse<ProductResponse> offline(@PathVariable Long id) {
+        return ApiResponse.ok(productService.offline(id));
+    }
+
+    @PostMapping("/products/{id}/relist")
+    public ApiResponse<ProductResponse> relist(@PathVariable Long id) {
+        return ApiResponse.ok(productService.relist(id));
+    }
+
     @GetMapping("/products/mine")
     public ApiResponse<PageResponse<ProductResponse>> mine(@ModelAttribute ProductSearchRequest request) {
         return ApiResponse.ok(productService.listMine(request));

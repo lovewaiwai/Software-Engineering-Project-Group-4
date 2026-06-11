@@ -28,6 +28,12 @@ public interface ProductService {
 
     PageResponse<ProductResponse> listMine(ProductSearchRequest request);
 
+    ProductResponse submitForReview(Long id);
+
+    ProductResponse offline(Long id);
+
+    ProductResponse relist(Long id);
+
     ProductResponse addImage(Long id, ProductImageRequest request);
 
     void favorite(Long id);

@@ -39,6 +39,7 @@
           <p>{{ product.description || '卖家暂未填写描述' }}</p>
           <div class="meta-row">
             <el-tag size="small">{{ product.categoryName || '未分类' }}</el-tag>
+            <el-tag v-if="product.sellerCreditLevel" size="small" type="success">信用{{ product.sellerCreditLevel }}</el-tag>
             <span>{{ product.recommendReason || '最新上架商品' }}</span>
           </div>
         </div>
