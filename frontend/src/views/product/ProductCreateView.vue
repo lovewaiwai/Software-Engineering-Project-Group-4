@@ -2,10 +2,10 @@
   <section class="product-create-page">
     <div class="page-head">
       <div>
-        <h1>发布商品</h1>
-        <p>商品提交后进入待审核状态，审核通过后才会出现在搜索结果中。</p>
+        <h1>{{ isEditing ? '编辑商品' : '发布商品' }}</h1>
+        <p>{{ isEditing ? '修改草稿或审核未通过的商品，完善后可以重新提交审核。' : '商品提交后进入待审核状态，审核通过后才会出现在搜索结果中。' }}</p>
       </div>
-      <el-button :icon="ArrowLeft" @click="$router.push('/products')">返回列表</el-button>
+      <el-button :icon="ArrowLeft" @click="$router.push(isEditing ? '/products/mine' : '/products')">返回列表</el-button>
     </div>
 
     <div class="form-grid">
@@ -124,14 +124,16 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { ArrowLeft, Check, Delete, MagicStick, Upload } from '@element-plus/icons-vue'
 import {
   createProduct,
+  getProduct,
   listCategories,
   listTags,
   suggestProduct,
+  updateProduct,
   uploadProductImage,
   type AiProductSuggestion,
   type CategoryItem,
@@ -143,6 +145,7 @@ import { getApiErrorMessage } from '../../utils/apiError'
 import { resolveMediaUrl } from '../../utils/media'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const formRef = ref<FormInstance>()
 const categories = ref<CategoryItem[]>([])
@@ -153,6 +156,11 @@ const uploadingImage = ref(false)
 const suggestion = ref<AiProductSuggestion | null>(null)
 const fileInputRef = ref<HTMLInputElement>()
 const submitMode = ref<'PENDING_REVIEW' | 'DRAFT'>('PENDING_REVIEW')
+const editingId = computed(() => {
+  const value = Number(route.params.id)
+  return Number.isInteger(value) && value > 0 ? value : undefined
+})
+const isEditing = computed(() => editingId.value !== undefined)
 
 type ProductForm = Omit<ProductPayload, 'categoryId' | 'title' | 'description' | 'conditionLevel' | 'campus' | 'tradeModes' | 'imageUrls' | 'tagIds'> & {
   categoryId?: number
@@ -204,7 +212,36 @@ onMounted(async () => {
     return
   }
   await loadMeta()
+  if (editingId.value) {
+    await loadProduct(editingId.value)
+  }
 })
+
+async function loadProduct(id: number) {
+  try {
+    const response = await getProduct(id)
+    if (response.code !== 0) throw new Error(response.message)
+    const product = response.data
+    if (product.status !== 'DRAFT' && product.status !== 'REVIEW_REJECTED') {
+      ElMessage.warning('只有草稿或审核未通过的商品可以编辑')
+      await router.push('/products/mine')
+      return
+    }
+    form.categoryId = product.categoryId
+    form.title = product.title ?? ''
+    form.description = product.description ?? ''
+    form.price = product.price
+    form.originalPrice = product.originalPrice
+    form.conditionLevel = product.conditionLevel ?? ''
+    form.campus = product.campus ?? ''
+    form.tradeModes = [...(product.tradeModes ?? [])]
+    form.imageUrls = [...(product.imageUrls ?? [])]
+    form.tagIds = [...(product.tagIds ?? [])]
+  } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '加载商品失败'))
+    await router.push('/products/mine')
+  }
+}
 
 async function loadMeta() {
   try {
@@ -275,9 +312,11 @@ async function submit(status: 'PENDING_REVIEW' | 'DRAFT') {
       title: form.title?.trim() || undefined,
       description: form.description?.trim() || undefined,
     }
-    const response = await createProduct(payload)
+    const response = editingId.value
+      ? await updateProduct(editingId.value, payload)
+      : await createProduct(payload)
     if (response.code !== 0) throw new Error(response.message)
-    ElMessage.success(status === 'DRAFT' ? '草稿已保存' : '商品已提交审核')
+    ElMessage.success(status === 'DRAFT' ? '草稿已保存' : isEditing.value ? '商品已修改并提交审核' : '商品已提交审核')
     await router.push('/products/mine')
   } catch (error) {
     ElMessage.error(getApiErrorMessage(error, '发布失败'))
