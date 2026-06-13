@@ -42,6 +42,12 @@
         </div>
         <div class="actions">
           <el-button @click="$router.push(`/products/${product.id}`)">查看详情</el-button>
+          <el-button
+            v-if="product.status === 'DRAFT' || product.status === 'REVIEW_REJECTED'"
+            @click="$router.push(`/products/${product.id}/edit`)"
+          >
+            编辑
+          </el-button>
           <el-button v-if="product.status === 'DRAFT' || product.status === 'REVIEW_REJECTED'" type="primary" @click="changeStatus(product, 'submit')">
             提交审核
           </el-button>
