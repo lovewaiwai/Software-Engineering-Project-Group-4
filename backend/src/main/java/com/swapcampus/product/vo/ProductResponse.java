@@ -25,8 +25,12 @@ public class ProductResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<String> imageUrls = new ArrayList<>();
+    private List<Long> tagIds = new ArrayList<>();
+    private List<String> tagNames = new ArrayList<>();
     private Boolean favorited;
     private String recommendReason;
+    private Integer sellerCreditScore;
+    private String sellerCreditLevel;
     private String module;
 
     public static ProductResponse placeholder(String module) {

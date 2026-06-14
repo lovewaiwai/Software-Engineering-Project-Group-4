@@ -12,24 +12,64 @@ type WsPayload = {
 }
 
 let socket: WebSocket | null = null
+const listeners = new Set<(payload: WsPayload) => void>()
 
-export function connectChatSocket(onEvent: (payload: WsPayload) => void) {
-  const auth = useAuthStore()
-  if (!auth.token) return
+function resolveWsUrl(token: string): string {
+  const configured = import.meta.env.VITE_WS_BASE_URL as string | undefined
+  if (configured) {
+    const base = configured.replace(/\/$/, '')
+    return `${base}/ws/chat?token=${encodeURIComponent(token)}`
+  }
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-  const url = `${protocol}://${window.location.host}/ws/chat?token=${encodeURIComponent(auth.token)}`
+  return `${protocol}://${window.location.host}/ws/chat?token=${encodeURIComponent(token)}`
+}
+
+function dispatchWsPayload(payload: WsPayload) {
+  listeners.forEach((listener) => listener(payload))
+}
+
+function ensureChatSocket() {
+  const auth = useAuthStore()
+  if (!auth.token || listeners.size === 0) return
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+    return
+  }
   socket?.close()
-  socket = new WebSocket(url)
+  socket = new WebSocket(resolveWsUrl(auth.token))
   socket.onmessage = (event) => {
     try {
-      onEvent(JSON.parse(event.data))
+      dispatchWsPayload(JSON.parse(event.data))
     } catch {
       // ignore malformed payloads
     }
   }
+  socket.onclose = () => {
+    if (listeners.size > 0) {
+      window.setTimeout(() => ensureChatSocket(), 3000)
+    }
+  }
 }
 
+export function subscribeChatSocket(onEvent: (payload: WsPayload) => void) {
+  listeners.add(onEvent)
+  ensureChatSocket()
+  return () => {
+    listeners.delete(onEvent)
+    if (listeners.size === 0) {
+      socket?.close()
+      socket = null
+    }
+  }
+}
+
+/** @deprecated use subscribeChatSocket */
+export function connectChatSocket(onEvent: (payload: WsPayload) => void) {
+  subscribeChatSocket(onEvent)
+}
+
+/** @deprecated listeners manage socket lifecycle */
 export function disconnectChatSocket() {
+  listeners.clear()
   socket?.close()
   socket = null
 }
@@ -64,7 +104,12 @@ export async function readSession(sessionId: number) {
   return response.data
 }
 
-export async function sendChatMessage(sessionId: number, messageType: 'TEXT' | 'IMAGE', content?: string, imageUrl?: string) {
+export async function sendChatMessage(
+  sessionId: number,
+  messageType: 'TEXT' | 'IMAGE' | 'EMOJI',
+  content?: string,
+  imageUrl?: string,
+) {
   sendWsMessage({ type: 'CHAT_MESSAGE', sessionId, messageType, content, imageUrl })
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     const response = await sendMessage(sessionId, { messageType, content, imageUrl })

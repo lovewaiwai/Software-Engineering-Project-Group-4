@@ -7,12 +7,14 @@ import com.swapcampus.admin.service.AdminModerationService;
 import com.swapcampus.admin.vo.AdminDashboardResponse;
 import com.swapcampus.admin.vo.AdminReportDetailResponse;
 import com.swapcampus.admin.vo.AdminUserSummaryResponse;
+import com.swapcampus.audit.entity.AuditEntity;
+import com.swapcampus.audit.mapper.AuditMapper;
 import com.swapcampus.audit.service.AuditLogService;
 import com.swapcampus.chat.entity.ChatMessageEntity;
 import com.swapcampus.chat.mapper.ChatMessageMapper;
 import com.swapcampus.chat.vo.ChatMessageResponse;
 import com.swapcampus.chat.websocket.ChatWebSocketSessionRegistry;
-import com.swapcampus.common.enums.ReportActionType;
+import com.swapcampus.common.enums.OrderStatus;
 import com.swapcampus.common.enums.ProductStatus;
 import com.swapcampus.common.enums.ReportStatus;
 import com.swapcampus.common.enums.ReportTargetType;
@@ -20,6 +22,8 @@ import com.swapcampus.common.enums.Role;
 import com.swapcampus.common.enums.UserStatus;
 import com.swapcampus.common.exception.BusinessException;
 import com.swapcampus.common.exception.ErrorCode;
+import com.swapcampus.order.entity.OrderEntity;
+import com.swapcampus.order.mapper.OrderMapper;
 import com.swapcampus.product.entity.CategoryEntity;
 import com.swapcampus.product.entity.ProductEntity;
 import com.swapcampus.product.entity.ProductImageEntity;
@@ -40,13 +44,16 @@ import com.swapcampus.user.service.UserModerationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 @Service
 public class AdminModerationServiceImpl implements AdminModerationService {
@@ -56,10 +63,12 @@ public class AdminModerationServiceImpl implements AdminModerationService {
     private final ChatMessageMapper chatMessageMapper;
     private final UserMapper userMapper;
     private final UserProfileMapper userProfileMapper;
+    private final ProductMapper productMapper;
+    private final OrderMapper orderMapper;
+    private final AuditMapper auditMapper;
     private final UserModerationService userModerationService;
     private final ChatWebSocketSessionRegistry sessionRegistry;
     private final AuditLogService auditLogService;
-    private final ProductMapper productMapper;
     private final CategoryMapper categoryMapper;
     private final ProductImageMapper productImageMapper;
 
@@ -68,10 +77,12 @@ public class AdminModerationServiceImpl implements AdminModerationService {
                                       ChatMessageMapper chatMessageMapper,
                                       UserMapper userMapper,
                                       UserProfileMapper userProfileMapper,
+                                      ProductMapper productMapper,
+                                      OrderMapper orderMapper,
+                                      AuditMapper auditMapper,
                                       UserModerationService userModerationService,
                                       ChatWebSocketSessionRegistry sessionRegistry,
                                       AuditLogService auditLogService,
-                                      ProductMapper productMapper,
                                       CategoryMapper categoryMapper,
                                       ProductImageMapper productImageMapper) {
         this.reportMapper = reportMapper;
@@ -79,10 +90,12 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         this.chatMessageMapper = chatMessageMapper;
         this.userMapper = userMapper;
         this.userProfileMapper = userProfileMapper;
+        this.productMapper = productMapper;
+        this.orderMapper = orderMapper;
+        this.auditMapper = auditMapper;
         this.userModerationService = userModerationService;
         this.sessionRegistry = sessionRegistry;
         this.auditLogService = auditLogService;
-        this.productMapper = productMapper;
         this.categoryMapper = categoryMapper;
         this.productImageMapper = productImageMapper;
     }
@@ -94,6 +107,22 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         response.setPendingReports(countReports(ReportStatus.PENDING, null));
         response.setTodayReports(countReports(null, startOfDay));
         response.setActiveChatUsers(countDistinctChatUsers(startOfDay));
+
+        response.setTotalUsers(countUsers(Role.USER, null));
+        response.setActiveUsers(countUsers(Role.USER, UserStatus.ACTIVE));
+        response.setBannedUsers(countUsers(Role.USER, UserStatus.BANNED));
+        response.setTodayNewUsers(countUsersSince(Role.USER, startOfDay));
+        response.setTodayActiveUsers(countTodayActiveUsers(startOfDay));
+
+        response.setTotalProducts(countProducts(null));
+        response.setActiveProducts(countProducts(ProductStatus.ACTIVE));
+        response.setTodayNewProducts(countProductsSince(startOfDay));
+
+        response.setTotalOrders(countOrders(null));
+        response.setCompletedOrders(countOrders(OrderStatus.COMPLETED));
+        response.setTodayNewOrders(countOrdersSince(startOfDay));
+        response.setTotalGmv(sumCompletedGmv(null));
+        response.setTodayGmv(sumCompletedGmv(startOfDay));
         return response;
     }
 
@@ -346,6 +375,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         if (category != null) {
             response.setCategoryName(category.getName());
         }
+
         response.setImageUrls(productImageMapper.selectList(new LambdaQueryWrapper<ProductImageEntity>()
                         .eq(ProductImageEntity::getProductId, product.getId())
                         .orderByAsc(ProductImageEntity::getSortOrder)
@@ -353,6 +383,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
                 .stream()
                 .map(ProductImageEntity::getUrl)
                 .toList());
+
         return response;
     }
 
@@ -379,11 +410,13 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         if (target == null) {
             return List.of();
         }
+
         List<ChatMessageEntity> before = chatMessageMapper.selectList(new LambdaQueryWrapper<ChatMessageEntity>()
                 .eq(ChatMessageEntity::getSessionId, target.getSessionId())
                 .lt(ChatMessageEntity::getSeqNo, target.getSeqNo())
                 .orderByDesc(ChatMessageEntity::getSeqNo)
                 .last("OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY"));
+
         List<ChatMessageEntity> after = chatMessageMapper.selectList(new LambdaQueryWrapper<ChatMessageEntity>()
                 .eq(ChatMessageEntity::getSessionId, target.getSessionId())
                 .gt(ChatMessageEntity::getSeqNo, target.getSeqNo())
@@ -394,6 +427,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         all.add(target);
         all.addAll(after);
         all.sort(Comparator.comparing(ChatMessageEntity::getSeqNo));
+
         return all.stream().map(ChatMessageResponse::from).toList();
     }
 
@@ -423,6 +457,109 @@ public class AdminModerationServiceImpl implements AdminModerationService {
     private long countDistinctChatUsers(LocalDateTime since) {
         List<ChatMessageEntity> messages = chatMessageMapper.selectList(new LambdaQueryWrapper<ChatMessageEntity>()
                 .ge(ChatMessageEntity::getCreatedAt, since));
-        return messages.stream().map(ChatMessageEntity::getSenderId).distinct().count();
+        return messages.stream()
+                .map(ChatMessageEntity::getSenderId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count();
+    }
+
+    private long countUsers(Role role, UserStatus status) {
+        LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<>();
+        if (role != null) {
+            wrapper.eq(UserEntity::getRole, role);
+        }
+        if (status != null) {
+            wrapper.eq(UserEntity::getStatus, status);
+        }
+        Long count = userMapper.selectCount(wrapper);
+        return count == null ? 0 : count;
+    }
+
+    private long countUsersSince(Role role, LocalDateTime since) {
+        LambdaQueryWrapper<UserEntity> wrapper = new LambdaQueryWrapper<UserEntity>()
+                .ge(UserEntity::getCreatedAt, since);
+        if (role != null) {
+            wrapper.eq(UserEntity::getRole, role);
+        }
+        Long count = userMapper.selectCount(wrapper);
+        return count == null ? 0 : count;
+    }
+
+    private long countTodayActiveUsers(LocalDateTime since) {
+        Set<Long> activeUserIds = new HashSet<>();
+
+        auditMapper.selectList(new LambdaQueryWrapper<AuditEntity>()
+                        .eq(AuditEntity::getAction, "AUTH_LOGIN")
+                        .ge(AuditEntity::getCreatedAt, since))
+                .forEach(item -> {
+                    if (item.getOperatorId() != null) {
+                        activeUserIds.add(item.getOperatorId());
+                    }
+                });
+
+        chatMessageMapper.selectList(new LambdaQueryWrapper<ChatMessageEntity>()
+                        .ge(ChatMessageEntity::getCreatedAt, since))
+                .forEach(item -> {
+                    if (item.getSenderId() != null) {
+                        activeUserIds.add(item.getSenderId());
+                    }
+                });
+
+        orderMapper.selectList(new LambdaQueryWrapper<OrderEntity>()
+                        .ge(OrderEntity::getCreatedAt, since))
+                .forEach(item -> {
+                    if (item.getBuyerId() != null) {
+                        activeUserIds.add(item.getBuyerId());
+                    }
+                    if (item.getSellerId() != null) {
+                        activeUserIds.add(item.getSellerId());
+                    }
+                });
+
+        return activeUserIds.size();
+    }
+
+    private long countProducts(ProductStatus status) {
+        LambdaQueryWrapper<ProductEntity> wrapper = new LambdaQueryWrapper<>();
+        if (status != null) {
+            wrapper.eq(ProductEntity::getStatus, status.name());
+        }
+        Long count = productMapper.selectCount(wrapper);
+        return count == null ? 0 : count;
+    }
+
+    private long countProductsSince(LocalDateTime since) {
+        Long count = productMapper.selectCount(new LambdaQueryWrapper<ProductEntity>()
+                .ge(ProductEntity::getCreatedAt, since));
+        return count == null ? 0 : count;
+    }
+
+    private long countOrders(OrderStatus status) {
+        LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<>();
+        if (status != null) {
+            wrapper.eq(OrderEntity::getStatus, status.name());
+        }
+        Long count = orderMapper.selectCount(wrapper);
+        return count == null ? 0 : count;
+    }
+
+    private long countOrdersSince(LocalDateTime since) {
+        Long count = orderMapper.selectCount(new LambdaQueryWrapper<OrderEntity>()
+                .ge(OrderEntity::getCreatedAt, since));
+        return count == null ? 0 : count;
+    }
+
+    private BigDecimal sumCompletedGmv(LocalDateTime since) {
+        LambdaQueryWrapper<OrderEntity> wrapper = new LambdaQueryWrapper<OrderEntity>()
+                .eq(OrderEntity::getStatus, OrderStatus.COMPLETED.name());
+        if (since != null) {
+            wrapper.and(w -> w.ge(OrderEntity::getCompletedAt, since)
+                    .or(x -> x.isNull(OrderEntity::getCompletedAt).ge(OrderEntity::getUpdatedAt, since)));
+        }
+        return orderMapper.selectList(wrapper).stream()
+                .map(OrderEntity::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

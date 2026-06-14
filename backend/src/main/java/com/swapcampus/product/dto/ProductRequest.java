@@ -34,8 +34,10 @@ public class ProductRequest {
     @Size(max = 50)
     private String campus;
 
+    private String status;
     private List<String> tradeModes;
     private List<String> imageUrls;
+    private List<Long> tagIds;
 
     public Long getCategoryId() {
         return categoryId;
@@ -97,6 +99,14 @@ public class ProductRequest {
         return tradeModes;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
     public void setTradeModes(List<String> tradeModes) {
         this.tradeModes = tradeModes;
     }
@@ -107,5 +117,13 @@ public class ProductRequest {
 
     public void setImageUrls(List<String> imageUrls) {
         this.imageUrls = imageUrls;
+    }
+
+    public List<Long> getTagIds() {
+        return tagIds;
+    }
+
+    public void setTagIds(List<Long> tagIds) {
+        this.tagIds = tagIds;
     }
 }
