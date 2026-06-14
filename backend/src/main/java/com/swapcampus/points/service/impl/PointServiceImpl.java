@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.swapcampus.audit.service.AuditLogService;
 import com.swapcampus.common.api.PageResponse;
+import com.swapcampus.common.enums.ProductStatus;
 import com.swapcampus.common.enums.UserStatus;
 import com.swapcampus.common.exception.BusinessException;
 import com.swapcampus.common.exception.ErrorCode;
@@ -21,9 +22,12 @@ import com.swapcampus.points.vo.PointItemResponse;
 import com.swapcampus.points.vo.PointRedemptionResponse;
 import com.swapcampus.points.vo.PointRecordResponse;
 import com.swapcampus.points.vo.PointTaskResponse;
+import com.swapcampus.product.entity.ProductEntity;
+import com.swapcampus.product.mapper.ProductMapper;
 import com.swapcampus.user.entity.UserProfileEntity;
 import com.swapcampus.user.mapper.UserMapper;
 import com.swapcampus.user.mapper.UserProfileMapper;
+import com.swapcampus.user.service.UserAccountService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,10 +45,12 @@ public class PointServiceImpl implements PointService {
     private static final String TASK_REF_TYPE = "TASK";
     private static final String REDEMPTION_REF_TYPE = "REDEMPTION";
 
+    // 信用分修复每月次数上限
+    private static final int CREDIT_REPAIR_MONTHLY_LIMIT = 3;
+
     private static final List<PointItemResponse> ITEMS = List.of(
-            new PointItemResponse("COUPON_10", "10元优惠券", 200, "用于平台兑换优惠券"),
-            new PointItemResponse("COUPON_30", "30元优惠券", 500, "用于平台兑换优惠券"),
-            new PointItemResponse("PROFILE_BADGE", "个人主页徽章", 120, "展示在个人主页的游戏化权益")
+            new PointItemResponse("CREDIT_REPAIR", "信用分修复", 200, "消耗200积分获得+5信用分，每月限3次"),
+            new PointItemResponse("PRODUCT_BOOST", "商品曝光加速", 300, "消耗300积分将您的商品置顶24小时")
     );
 
     private final PointTaskMapper pointTaskMapper;
@@ -53,17 +59,25 @@ public class PointServiceImpl implements PointService {
     private final UserMapper userMapper;
     private final UserProfileMapper userProfileMapper;
     private final AuditLogService auditLogService;
+    private final UserAccountService userAccountService;
+    private final ProductMapper productMapper;
+
     public PointServiceImpl(PointTaskMapper pointTaskMapper,
                             PointRecordMapper pointRecordMapper,
                             PointRedemptionMapper pointRedemptionMapper,
                             UserMapper userMapper,
                             UserProfileMapper userProfileMapper,
-                            AuditLogService auditLogService) {
+                            AuditLogService auditLogService,
+                            UserAccountService userAccountService,
+                            ProductMapper productMapper) {
         this.pointTaskMapper = pointTaskMapper;
         this.pointRecordMapper = pointRecordMapper;
         this.pointRedemptionMapper = pointRedemptionMapper;
         this.userMapper = userMapper;
-        this.userProfileMapper = userProfileMapper;        this.auditLogService = auditLogService;
+        this.userProfileMapper = userProfileMapper;
+        this.auditLogService = auditLogService;
+        this.userAccountService = userAccountService;
+        this.productMapper = productMapper;
     }
 
     @Override
@@ -123,6 +137,25 @@ public class PointServiceImpl implements PointService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "积分不足");
         }
 
+        // 处理各项兑换的额外业务校验与副作用
+        switch (item.itemCode()) {
+            case "CREDIT_REPAIR" -> checkCreditRepairLimit(userId);
+            case "PRODUCT_BOOST" -> {
+                long productCount = productMapper.selectCount(new LambdaQueryWrapper<ProductEntity>()
+                        .eq(ProductEntity::getSellerId, userId)
+                        .eq(ProductEntity::getStatus, ProductStatus.ACTIVE.name())
+                        .eq(ProductEntity::getDeleted, false));
+                if (productCount == 0) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST, "您当前暂未发布商品");
+                }
+                if (request.getProductId() == null) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST, "请选择要加速曝光的商品");
+                }
+                validateBoostProduct(userId, request.getProductId());
+            }
+        }
+
+        // 扣积分 + 记录兑换流水
         PointRedemptionEntity redemption = new PointRedemptionEntity();
         redemption.setUserId(userId);
         redemption.setItemCode(item.itemCode());
@@ -139,6 +172,18 @@ public class PointServiceImpl implements PointService {
         PointRecordEntity record = createRecord(userId, -item.costPoints(), balanceAfter, "兑换：" + item.itemName(), REDEMPTION_REF_TYPE, redemption.getId());
         pointRecordMapper.insert(record);
 
+        // 执行具体业务副作用
+        switch (item.itemCode()) {
+            case "CREDIT_REPAIR" -> userAccountService.addCredit(userId, 5,
+                    "积分兑换：信用分修复", REDEMPTION_REF_TYPE, redemption.getId());
+            case "PRODUCT_BOOST" -> {
+                ProductEntity product = productMapper.selectById(request.getProductId());
+                product.setBoostedUntil(LocalDateTime.now(SHANGHAI).plusHours(24));
+                product.setUpdatedAt(LocalDateTime.now(SHANGHAI));
+                productMapper.updateById(product);
+            }
+        }
+
         auditLogService.record(userId, "POINT_REDEEM", "USER", userId, item.itemName());
 
         PointRedemptionResponse response = new PointRedemptionResponse();
@@ -150,6 +195,30 @@ public class PointServiceImpl implements PointService {
         response.setBalanceAfter(balanceAfter);
         response.setCreatedAt(redemption.getCreatedAt());
         return response;
+    }
+
+    private void checkCreditRepairLimit(Long userId) {
+        LocalDateTime monthStart = LocalDate.now(SHANGHAI).withDayOfMonth(1).atStartOfDay();
+        long count = pointRedemptionMapper.selectCount(new LambdaQueryWrapper<PointRedemptionEntity>()
+                .eq(PointRedemptionEntity::getUserId, userId)
+                .eq(PointRedemptionEntity::getItemCode, "CREDIT_REPAIR")
+                .ge(PointRedemptionEntity::getCreatedAt, monthStart));
+        if (count >= CREDIT_REPAIR_MONTHLY_LIMIT) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "本月信用分修复次数已达上限（3次）");
+        }
+    }
+
+    private void validateBoostProduct(Long userId, Long productId) {
+        ProductEntity product = productMapper.selectById(productId);
+        if (product == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "商品不存在");
+        }
+        if (!userId.equals(product.getSellerId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "只能对自己发布的商品使用曝光加速");
+        }
+        if (!ProductStatus.ACTIVE.name().equals(product.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "只有已上架的商品才能加速曝光");
+        }
     }
 
     private PointRecordResponse claimCheckIn(PointTaskEntity task) {
