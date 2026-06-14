@@ -42,7 +42,8 @@ public class UserAccountServiceImpl implements UserAccountService {
     public int addCredit(Long userId, int delta, String reason, String refType, Long refId) {
         UserEntity user = loadActiveUser(userId);
         int currentScore = user.getCreditScore() == null ? 60 : user.getCreditScore();
-        int scoreAfter = Math.max(0, currentScore + delta);
+        // 信用分范围 [0, 100]
+        int scoreAfter = Math.max(0, Math.min(100, currentScore + delta));
 
         user.setCreditScore(scoreAfter);
         userMapper.updateById(user);
@@ -67,7 +68,7 @@ public class UserAccountServiceImpl implements UserAccountService {
         int currentBalance = user.getPointBalance() == null ? 0 : user.getPointBalance();
         int balanceAfter = currentBalance + delta;
         if (balanceAfter < 0) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "积分余额不足，无法扣减");
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "积分余额不足，无法扣出");
         }
 
         user.setPointBalance(balanceAfter);

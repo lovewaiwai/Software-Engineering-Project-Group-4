@@ -30,7 +30,7 @@ VALUES
 INSERT INTO users (username, password_hash, email, role, status, credit_score, point_balance, is_deleted)
 VALUES
   (N'demo_buyer', @demoPasswordHash, N'buyer@swapcampus.local', N'USER', N'ACTIVE', 92, 160, 0),
-  (N'demo_seller', @demoPasswordHash, N'seller@swapcampus.local', N'USER', N'ACTIVE', 88, 80, 0),
+  (N'demo_seller', @demoPasswordHash, N'seller@swapcampus.local', N'USER', N'ACTIVE', 88, 300, 0),
   (N'muted_user', @demoPasswordHash, N'muted@swapcampus.local', N'USER', N'ACTIVE', 55, 20, 0),
   (N'banned_user', @demoPasswordHash, N'banned@swapcampus.local', N'USER', N'BANNED', 20, 0, 0),
   (N'new_user', @demoPasswordHash, N'new@swapcampus.local', N'USER', N'ACTIVE', 60, 0, 0),
