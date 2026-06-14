@@ -1,6 +1,7 @@
 package com.swapcampus.product.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -134,7 +135,7 @@ public class ProductServiceImpl implements ProductService {
         ProductEntity entity = new ProductEntity();
         fillProduct(entity, request);
         entity.setSellerId(sellerId);
-        entity.setStatus(ProductStatus.PENDING_REVIEW.name());
+        entity.setStatus(status.name());
         entity.setViewCount(0);
         entity.setFavoriteCount(0);
         entity.setCreatedAt(now);
@@ -166,7 +167,7 @@ public class ProductServiceImpl implements ProductService {
             ensureCategoryExists(request.getCategoryId());
         }
         fillProduct(entity, request);
-        entity.setStatus(ProductStatus.PENDING_REVIEW.name());
+        entity.setStatus(status.name());
         entity.setAuditReason(null);
         entity.setUpdatedAt(LocalDateTime.now());
         productMapper.updateById(entity);
@@ -184,32 +185,35 @@ public class ProductServiceImpl implements ProductService {
     public PageResponse<ProductResponse> search(ProductSearchRequest request) {
         long page = Math.max(1, request.getPage());
         long pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, request.getPageSize()));
-        LambdaQueryWrapper<ProductEntity> wrapper = new LambdaQueryWrapper<ProductEntity>()
-                .eq(ProductEntity::getStatus, ProductStatus.ACTIVE.name());
+        // 使用 QueryWrapper（非 Lambda）以支持原始 SQL 表达式排序
+        QueryWrapper<ProductEntity> wrapper = new QueryWrapper<ProductEntity>()
+                .eq("status", ProductStatus.ACTIVE.name());
         if (StringUtils.hasText(request.getKeyword())) {
             String keyword = request.getKeyword().trim();
-            wrapper.and(w -> w.like(ProductEntity::getTitle, keyword)
+            wrapper.and(w -> w.like("title", keyword)
                     .or()
-                    .like(ProductEntity::getDescription, keyword));
+                    .like("description", keyword));
         }
         if (request.getCategoryId() != null) {
-            wrapper.eq(ProductEntity::getCategoryId, request.getCategoryId());
+            wrapper.eq("category_id", request.getCategoryId());
         }
         if (request.getMinPrice() != null) {
-            wrapper.ge(ProductEntity::getPrice, request.getMinPrice());
+            wrapper.ge("price", request.getMinPrice());
         }
         if (request.getMaxPrice() != null) {
-            wrapper.le(ProductEntity::getPrice, request.getMaxPrice());
+            wrapper.le("price", request.getMaxPrice());
         }
         if (StringUtils.hasText(request.getConditionLevel())) {
-            wrapper.eq(ProductEntity::getConditionLevel, request.getConditionLevel().trim());
+            wrapper.eq("condition_level", request.getConditionLevel().trim());
         }
         if (StringUtils.hasText(request.getCampus())) {
-            wrapper.eq(ProductEntity::getCampus, request.getCampus().trim());
+            wrapper.eq("campus", request.getCampus().trim());
         }
         if (StringUtils.hasText(request.getTradeMode())) {
-            wrapper.like(ProductEntity::getTradeModes, request.getTradeMode().trim());
+            wrapper.like("trade_modes", request.getTradeMode().trim());
         }
+        // boosted_until > NOW() 的商品排在最前面
+        wrapper.orderByAsc("CASE WHEN boosted_until > GETDATE() THEN 0 ELSE 1 END");
         applySort(wrapper, request.getSort());
 
         IPage<ProductEntity> result = productMapper.selectPage(new Page<>(page, pageSize), wrapper);
@@ -357,13 +361,34 @@ public class ProductServiceImpl implements ProductService {
                 .set(ProductEntity::getUpdatedAt, LocalDateTime.now()));
     }
 
+    /**
+     * 商品曝光加速：设置 boosted_until 为当前时间 + 24 小时。
+     * 由积分兑换模块调用。
+     *
+     * @param userId    商品所属用户
+     * @param productId 要加速的商品 ID
+     * @return 加速后的商品响应
+     */
+    @Transactional
+    public ProductResponse applyBoost(Long userId, Long productId) {
+        ProductEntity product = requireOwnedProduct(productId, userId);
+        if (!ProductStatus.ACTIVE.name().equals(product.getStatus())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "只有已上架商品可以加速曝光");
+        }
+        LocalDateTime boostUntil = LocalDateTime.now().plusHours(24);
+        product.setBoostedUntil(boostUntil);
+        product.setUpdatedAt(LocalDateTime.now());
+        productMapper.updateById(product);
+        return toResponse(product, userId);
+    }
+
     private void fillProduct(ProductEntity entity, ProductRequest request) {
         entity.setCategoryId(request.getCategoryId());
-        entity.setTitle(request.getTitle().trim());
-        entity.setDescription(request.getDescription());
+        entity.setTitle(StringUtils.hasText(request.getTitle()) ? request.getTitle().trim() : null);
+        entity.setDescription(StringUtils.hasText(request.getDescription()) ? request.getDescription().trim() : null);
         entity.setPrice(request.getPrice());
         entity.setOriginalPrice(request.getOriginalPrice());
-        entity.setConditionLevel(request.getConditionLevel().trim());
+        entity.setConditionLevel(StringUtils.hasText(request.getConditionLevel()) ? request.getConditionLevel().trim() : null);
         entity.setCampus(StringUtils.hasText(request.getCampus()) ? request.getCampus().trim() : null);
         entity.setTradeModes(toTradeModes(request.getTradeModes()));
     }
@@ -510,15 +535,15 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    private void applySort(LambdaQueryWrapper<ProductEntity> wrapper, String sort) {
+    private void applySort(QueryWrapper<ProductEntity> wrapper, String sort) {
         if ("price_asc".equalsIgnoreCase(sort)) {
-            wrapper.orderByAsc(ProductEntity::getPrice).orderByDesc(ProductEntity::getCreatedAt);
+            wrapper.orderByAsc("price").orderByDesc("created_at");
         } else if ("price_desc".equalsIgnoreCase(sort)) {
-            wrapper.orderByDesc(ProductEntity::getPrice).orderByDesc(ProductEntity::getCreatedAt);
+            wrapper.orderByDesc("price").orderByDesc("created_at");
         } else if ("hot".equalsIgnoreCase(sort)) {
-            wrapper.orderByDesc(ProductEntity::getViewCount).orderByDesc(ProductEntity::getFavoriteCount);
+            wrapper.orderByDesc("view_count").orderByDesc("favorite_count");
         } else {
-            wrapper.orderByDesc(ProductEntity::getCreatedAt);
+            wrapper.orderByDesc("created_at");
         }
     }
 
@@ -541,6 +566,7 @@ public class ProductServiceImpl implements ProductService {
         response.setAuditReason(entity.getAuditReason());
         response.setCreatedAt(entity.getCreatedAt());
         response.setUpdatedAt(entity.getUpdatedAt());
+        response.setBoostedUntil(entity.getBoostedUntil());
         response.setImageUrls(imageUrls(entity.getId()));
         List<TagEntity> tags = productTags(entity.getId());
         response.setTagIds(tags.stream().map(TagEntity::getId).toList());

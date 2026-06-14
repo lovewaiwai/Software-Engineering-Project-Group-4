@@ -40,6 +40,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'products', component: ProductListView },
       { path: 'products/new', component: ProductCreateView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
       { path: 'products/mine', component: MyProductsView, meta: { requiresAuth: true, requiresUser: true } },
+      { path: 'products/:id/edit', component: ProductCreateView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
       { path: 'products/:id', component: ProductDetailView, props: true },
       { path: 'orders', component: OrderListView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
       { path: 'orders/:id', component: OrderDetailView, props: true, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },

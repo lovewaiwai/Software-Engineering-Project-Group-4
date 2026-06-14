@@ -16,6 +16,7 @@ import com.swapcampus.chat.vo.ChatMessageResponse;
 import com.swapcampus.chat.websocket.ChatWebSocketSessionRegistry;
 import com.swapcampus.common.enums.OrderStatus;
 import com.swapcampus.common.enums.ProductStatus;
+import com.swapcampus.common.enums.ReportActionType;
 import com.swapcampus.common.enums.ReportStatus;
 import com.swapcampus.common.enums.ReportTargetType;
 import com.swapcampus.common.enums.Role;

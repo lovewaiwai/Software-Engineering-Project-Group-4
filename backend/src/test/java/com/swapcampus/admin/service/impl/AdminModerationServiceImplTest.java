@@ -73,8 +73,6 @@ class AdminModerationServiceImplTest {
     @Mock
     private AuditLogService auditLogService;
     @Mock
-    private ProductMapper productMapper;
-    @Mock
     private CategoryMapper categoryMapper;
     @Mock
     private ProductImageMapper productImageMapper;
@@ -99,7 +97,6 @@ class AdminModerationServiceImplTest {
                 userModerationService,
                 sessionRegistry,
                 auditLogService,
-                productMapper,
                 categoryMapper,
                 productImageMapper
         );

@@ -1,0 +1,9 @@
+export function formatUnreadCount(count: number): string {
+  if (count <= 0) return ''
+  if (count > 99) return '99+'
+  return String(count)
+}
+
+export function sumUnreadCount(sessions: Array<{ unreadCount?: number }>): number {
+  return sessions.reduce((total, session) => total + (session.unreadCount ?? 0), 0)
+}

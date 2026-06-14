@@ -24,6 +24,7 @@ public class ProductResponse {
     private String auditReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime boostedUntil;
     private List<String> imageUrls = new ArrayList<>();
     private List<Long> tagIds = new ArrayList<>();
     private List<String> tagNames = new ArrayList<>();
@@ -40,171 +41,81 @@ public class ProductResponse {
         return response;
     }
 
-    public String getModule() {
-        return module;
-    }
+    public String getModule() { return module; }
+    public void setModule(String module) { this.module = module; }
 
-    public void setModule(String module) {
-        this.module = module;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public Long getId() {
-        return id;
-    }
+    public Long getSellerId() { return sellerId; }
+    public void setSellerId(Long sellerId) { this.sellerId = sellerId; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public Long getCategoryId() { return categoryId; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
 
-    public Long getSellerId() {
-        return sellerId;
-    }
+    public String getCategoryName() { return categoryName; }
+    public void setCategoryName(String categoryName) { this.categoryName = categoryName; }
 
-    public void setSellerId(Long sellerId) {
-        this.sellerId = sellerId;
-    }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    public Long getCategoryId() {
-        return categoryId;
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public void setCategoryId(Long categoryId) {
-        this.categoryId = categoryId;
-    }
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
 
-    public String getCategoryName() {
-        return categoryName;
-    }
+    public BigDecimal getOriginalPrice() { return originalPrice; }
+    public void setOriginalPrice(BigDecimal originalPrice) { this.originalPrice = originalPrice; }
 
-    public void setCategoryName(String categoryName) {
-        this.categoryName = categoryName;
-    }
+    public String getConditionLevel() { return conditionLevel; }
+    public void setConditionLevel(String conditionLevel) { this.conditionLevel = conditionLevel; }
 
-    public String getTitle() {
-        return title;
-    }
+    public String getCampus() { return campus; }
+    public void setCampus(String campus) { this.campus = campus; }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
+    public List<String> getTradeModes() { return tradeModes; }
+    public void setTradeModes(List<String> tradeModes) { this.tradeModes = tradeModes; }
 
-    public String getDescription() {
-        return description;
-    }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    public Integer getViewCount() { return viewCount; }
+    public void setViewCount(Integer viewCount) { this.viewCount = viewCount; }
 
-    public BigDecimal getPrice() {
-        return price;
-    }
+    public Integer getFavoriteCount() { return favoriteCount; }
+    public void setFavoriteCount(Integer favoriteCount) { this.favoriteCount = favoriteCount; }
 
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
+    public String getAuditReason() { return auditReason; }
+    public void setAuditReason(String auditReason) { this.auditReason = auditReason; }
 
-    public BigDecimal getOriginalPrice() {
-        return originalPrice;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public void setOriginalPrice(BigDecimal originalPrice) {
-        this.originalPrice = originalPrice;
-    }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    public String getConditionLevel() {
-        return conditionLevel;
-    }
+    public LocalDateTime getBoostedUntil() { return boostedUntil; }
+    public void setBoostedUntil(LocalDateTime boostedUntil) { this.boostedUntil = boostedUntil; }
 
-    public void setConditionLevel(String conditionLevel) {
-        this.conditionLevel = conditionLevel;
-    }
+    public List<String> getImageUrls() { return imageUrls; }
+    public void setImageUrls(List<String> imageUrls) { this.imageUrls = imageUrls; }
 
-    public String getCampus() {
-        return campus;
-    }
+    public List<Long> getTagIds() { return tagIds; }
+    public void setTagIds(List<Long> tagIds) { this.tagIds = tagIds; }
 
-    public void setCampus(String campus) {
-        this.campus = campus;
-    }
+    public List<String> getTagNames() { return tagNames; }
+    public void setTagNames(List<String> tagNames) { this.tagNames = tagNames; }
 
-    public List<String> getTradeModes() {
-        return tradeModes;
-    }
+    public Boolean getFavorited() { return favorited; }
+    public void setFavorited(Boolean favorited) { this.favorited = favorited; }
 
-    public void setTradeModes(List<String> tradeModes) {
-        this.tradeModes = tradeModes;
-    }
+    public String getRecommendReason() { return recommendReason; }
+    public void setRecommendReason(String recommendReason) { this.recommendReason = recommendReason; }
 
-    public String getStatus() {
-        return status;
-    }
+    public Integer getSellerCreditScore() { return sellerCreditScore; }
+    public void setSellerCreditScore(Integer sellerCreditScore) { this.sellerCreditScore = sellerCreditScore; }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public Integer getViewCount() {
-        return viewCount;
-    }
-
-    public void setViewCount(Integer viewCount) {
-        this.viewCount = viewCount;
-    }
-
-    public Integer getFavoriteCount() {
-        return favoriteCount;
-    }
-
-    public void setFavoriteCount(Integer favoriteCount) {
-        this.favoriteCount = favoriteCount;
-    }
-
-    public String getAuditReason() {
-        return auditReason;
-    }
-
-    public void setAuditReason(String auditReason) {
-        this.auditReason = auditReason;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public List<String> getImageUrls() {
-        return imageUrls;
-    }
-
-    public void setImageUrls(List<String> imageUrls) {
-        this.imageUrls = imageUrls;
-    }
-
-    public Boolean getFavorited() {
-        return favorited;
-    }
-
-    public void setFavorited(Boolean favorited) {
-        this.favorited = favorited;
-    }
-
-    public String getRecommendReason() {
-        return recommendReason;
-    }
-
-    public void setRecommendReason(String recommendReason) {
-        this.recommendReason = recommendReason;
-    }
+    public String getSellerCreditLevel() { return sellerCreditLevel; }
+    public void setSellerCreditLevel(String sellerCreditLevel) { this.sellerCreditLevel = sellerCreditLevel; }
 }

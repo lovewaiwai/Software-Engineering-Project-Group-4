@@ -35,7 +35,10 @@ export async function fetchPointItems() {
   return data
 }
 
-export async function redeemPointItem(itemCode: string) {
-  const { data } = await apiClient.post<ApiResponse<PointRedemption>>('/points/redeem', { itemCode })
+export async function redeemPointItem(itemCode: string, productId?: number) {
+  const { data } = await apiClient.post<ApiResponse<PointRedemption>>('/points/redeem', {
+    itemCode,
+    ...(productId !== undefined && { productId }),
+  })
   return data
 }
