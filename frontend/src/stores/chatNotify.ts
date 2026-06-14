@@ -4,6 +4,8 @@ import { loadSessions, subscribeChatSocket, type WsPayload } from './chat'
 import { sumUnreadCount } from '../utils/unread'
 import { useAuthStore } from './auth'
 
+const NOTIFY_POLL_INTERVAL_MS = 5000
+
 export const useChatNotifyStore = defineStore('chatNotify', {
   state: () => ({
     totalUnread: 0,
@@ -41,7 +43,7 @@ export const useChatNotifyStore = defineStore('chatNotify', {
       void this.refresh()
       this.pollTimer = setInterval(() => {
         void this.refresh()
-      }, 30000)
+      }, NOTIFY_POLL_INTERVAL_MS)
       this.unsubscribeWs = subscribeChatSocket((payload: WsPayload) => {
         if (payload.type === 'CHAT_MESSAGE' || payload.type === 'READ_RECEIPT') {
           void this.refresh()

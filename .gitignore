@@ -22,6 +22,7 @@ T-02_SwapCampus_选题申报表_草稿.docx
 
 # Build artifacts and local dependencies
 backend/target/
+backend/uploads/
 frontend/node_modules/
 frontend/dist/
 

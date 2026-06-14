@@ -213,6 +213,8 @@ import { useChatNotifyStore } from '../../stores/chatNotify'
 import { resolveSticker, type ChatSticker } from '../../constants/chatEmojis'
 import { formatMessageTime, peerInitial, resolveMediaUrl } from '../../utils/media'
 
+const CHAT_MESSAGE_POLL_INTERVAL_MS = 3000
+
 const route = useRoute()
 const auth = useAuthStore()
 const chatNotify = useChatNotifyStore()
@@ -237,6 +239,7 @@ const reportingMessage = ref<ChatMessage | null>(null)
 const previewVisible = ref(false)
 const previewUrls = ref<string[]>([])
 let unsubscribeWs: (() => void) | null = null
+let messagePollTimer: ReturnType<typeof setInterval> | null = null
 
 const activePeerName = computed(() => {
   const session = sessions.value.find((item) => item.id === activeSessionId.value)
@@ -317,15 +320,34 @@ function upsertMessage(message: ChatMessage) {
   messages.value.sort((a, b) => a.seqNo - b.seqNo)
 }
 
-async function refreshSessions() {
-  loadingSessions.value = true
+async function refreshSessions(silent = false) {
+  if (!silent) loadingSessions.value = true
   try {
     sessions.value = await loadSessions()
     chatNotify.applySessions(sessions.value)
   } catch (error) {
-    ElMessage.error(error instanceof Error ? error.message : '加载会话失败')
+    if (!silent) ElMessage.error(error instanceof Error ? error.message : '加载会话失败')
   } finally {
-    loadingSessions.value = false
+    if (!silent) loadingSessions.value = false
+  }
+}
+
+async function pollActiveSession() {
+  if (!activeSessionId.value) return
+  const sessionId = activeSessionId.value
+  try {
+    const currentLastId = messages.value.at(-1)?.id
+    const latestMessages = await loadMessages(sessionId)
+    const latestLastId = latestMessages.at(-1)?.id
+    messages.value = latestMessages
+    if (latestLastId && latestLastId !== currentLastId) {
+      await scrollToBottom()
+    }
+    await readSession(sessionId)
+    sendWsMessage({ type: 'READ_RECEIPT', sessionId })
+    await refreshSessions(true)
+  } catch {
+    // polling is a silent fallback; WebSocket and manual actions still surface errors
   }
 }
 
@@ -430,6 +452,9 @@ onMounted(async () => {
   document.addEventListener('click', handleDocumentClick)
   unsubscribeWs = subscribeChatSocket(handleWsEvent)
   wsConnected.value = true
+  messagePollTimer = setInterval(() => {
+    void pollActiveSession()
+  }, CHAT_MESSAGE_POLL_INTERVAL_MS)
   await refreshSessions()
   const querySessionId = Number(route.query.sessionId)
   if (querySessionId) {
@@ -441,6 +466,10 @@ onUnmounted(() => {
   document.removeEventListener('click', handleDocumentClick)
   unsubscribeWs?.()
   unsubscribeWs = null
+  if (messagePollTimer) {
+    clearInterval(messagePollTimer)
+    messagePollTimer = null
+  }
 })
 
 watch(

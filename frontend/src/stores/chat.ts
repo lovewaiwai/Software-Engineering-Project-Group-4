@@ -20,6 +20,14 @@ function resolveWsUrl(token: string): string {
     const base = configured.replace(/\/$/, '')
     return `${base}/ws/chat?token=${encodeURIComponent(token)}`
   }
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined
+  if (apiBaseUrl?.startsWith('http')) {
+    const apiUrl = new URL(apiBaseUrl)
+    apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+    apiUrl.pathname = '/ws/chat'
+    apiUrl.search = `token=${encodeURIComponent(token)}`
+    return apiUrl.toString()
+  }
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
   return `${protocol}://${window.location.host}/ws/chat?token=${encodeURIComponent(token)}`
 }
