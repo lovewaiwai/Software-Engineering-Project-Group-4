@@ -12,7 +12,6 @@ import com.swapcampus.common.enums.Role;
 import com.swapcampus.common.enums.UserStatus;
 import com.swapcampus.common.exception.BusinessException;
 import com.swapcampus.common.exception.ErrorCode;
-import com.swapcampus.order.mapper.OrderMapper;
 import com.swapcampus.product.entity.CategoryEntity;
 import com.swapcampus.product.entity.ProductEntity;
 import com.swapcampus.product.entity.ProductImageEntity;
@@ -76,10 +75,6 @@ class AdminModerationServiceImplTest {
     private CategoryMapper categoryMapper;
     @Mock
     private ProductImageMapper productImageMapper;
-    @Mock
-    private OrderMapper orderMapper;
-    @Mock
-    private AuditMapper auditMapper;
 
     private AdminModerationServiceImpl adminService;
 
