@@ -4,6 +4,7 @@ import com.swapcampus.admin.dto.ProductReviewRequest;
 import com.swapcampus.admin.vo.AdminUserSummaryResponse;
 import com.swapcampus.audit.mapper.AuditMapper;
 import com.swapcampus.audit.service.AuditLogService;
+import com.swapcampus.order.mapper.OrderMapper;
 import com.swapcampus.chat.mapper.ChatMessageMapper;
 import com.swapcampus.chat.websocket.ChatWebSocketSessionRegistry;
 import com.swapcampus.common.enums.ProductStatus;
@@ -75,6 +76,10 @@ class AdminModerationServiceImplTest {
     private CategoryMapper categoryMapper;
     @Mock
     private ProductImageMapper productImageMapper;
+    @Mock
+    private OrderMapper orderMapper;
+    @Mock
+    private AuditMapper auditMapper;
 
     private AdminModerationServiceImpl adminService;
 

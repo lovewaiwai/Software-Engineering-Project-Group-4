@@ -141,7 +141,7 @@ db/seeds/V002__demo_products.sql
 然后重新执行：
 
 ```powershell
-docker compose up -d db-init
+docker compose up -d db-initdocker compose --profile app up -d --build
 ```
 
 也可以手动触发数据库脚本同步：

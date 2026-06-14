@@ -48,7 +48,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -377,6 +376,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         if (category != null) {
             response.setCategoryName(category.getName());
         }
+
         response.setImageUrls(productImageMapper.selectList(new LambdaQueryWrapper<ProductImageEntity>()
                         .eq(ProductImageEntity::getProductId, product.getId())
                         .orderByAsc(ProductImageEntity::getSortOrder)
@@ -384,6 +384,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
                 .stream()
                 .map(ProductImageEntity::getUrl)
                 .toList());
+
         return response;
     }
 
@@ -410,11 +411,13 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         if (target == null) {
             return List.of();
         }
+
         List<ChatMessageEntity> before = chatMessageMapper.selectList(new LambdaQueryWrapper<ChatMessageEntity>()
                 .eq(ChatMessageEntity::getSessionId, target.getSessionId())
                 .lt(ChatMessageEntity::getSeqNo, target.getSeqNo())
                 .orderByDesc(ChatMessageEntity::getSeqNo)
                 .last("OFFSET 0 ROWS FETCH NEXT 5 ROWS ONLY"));
+
         List<ChatMessageEntity> after = chatMessageMapper.selectList(new LambdaQueryWrapper<ChatMessageEntity>()
                 .eq(ChatMessageEntity::getSessionId, target.getSessionId())
                 .gt(ChatMessageEntity::getSeqNo, target.getSeqNo())
@@ -425,6 +428,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         all.add(target);
         all.addAll(after);
         all.sort(Comparator.comparing(ChatMessageEntity::getSeqNo));
+
         return all.stream().map(ChatMessageResponse::from).toList();
     }
 
@@ -454,7 +458,11 @@ public class AdminModerationServiceImpl implements AdminModerationService {
     private long countDistinctChatUsers(LocalDateTime since) {
         List<ChatMessageEntity> messages = chatMessageMapper.selectList(new LambdaQueryWrapper<ChatMessageEntity>()
                 .ge(ChatMessageEntity::getCreatedAt, since));
-        return messages.stream().map(ChatMessageEntity::getSenderId).distinct().count();
+        return messages.stream()
+                .map(ChatMessageEntity::getSenderId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count();
     }
 
     private long countUsers(Role role, UserStatus status) {
@@ -493,7 +501,11 @@ public class AdminModerationServiceImpl implements AdminModerationService {
 
         chatMessageMapper.selectList(new LambdaQueryWrapper<ChatMessageEntity>()
                         .ge(ChatMessageEntity::getCreatedAt, since))
-                .forEach(item -> activeUserIds.add(item.getSenderId()));
+                .forEach(item -> {
+                    if (item.getSenderId() != null) {
+                        activeUserIds.add(item.getSenderId());
+                    }
+                });
 
         orderMapper.selectList(new LambdaQueryWrapper<OrderEntity>()
                         .ge(OrderEntity::getCreatedAt, since))
