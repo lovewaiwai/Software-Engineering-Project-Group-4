@@ -29,151 +29,66 @@ public class ProductEntity {
     private String auditReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime boostedUntil;
 
     @TableLogic
     @TableField("is_deleted")
     private Boolean deleted;
 
-    public Long getId() {
-        return id;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public Long getSellerId() { return sellerId; }
+    public void setSellerId(Long sellerId) { this.sellerId = sellerId; }
 
-    public Long getSellerId() {
-        return sellerId;
-    }
+    public Long getCategoryId() { return categoryId; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
 
-    public void setSellerId(Long sellerId) {
-        this.sellerId = sellerId;
-    }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    public Long getCategoryId() {
-        return categoryId;
-    }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
-    public void setCategoryId(Long categoryId) {
-        this.categoryId = categoryId;
-    }
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
 
-    public String getTitle() {
-        return title;
-    }
+    public BigDecimal getOriginalPrice() { return originalPrice; }
+    public void setOriginalPrice(BigDecimal originalPrice) { this.originalPrice = originalPrice; }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
+    public String getConditionLevel() { return conditionLevel; }
+    public void setConditionLevel(String conditionLevel) { this.conditionLevel = conditionLevel; }
 
-    public String getDescription() {
-        return description;
-    }
+    public String getCampus() { return campus; }
+    public void setCampus(String campus) { this.campus = campus; }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    public String getTradeModes() { return tradeModes; }
+    public void setTradeModes(String tradeModes) { this.tradeModes = tradeModes; }
 
-    public BigDecimal getPrice() {
-        return price;
-    }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
-    public void setPrice(BigDecimal price) {
-        this.price = price;
-    }
+    public Integer getViewCount() { return viewCount; }
+    public void setViewCount(Integer viewCount) { this.viewCount = viewCount; }
 
-    public BigDecimal getOriginalPrice() {
-        return originalPrice;
-    }
+    public Integer getFavoriteCount() { return favoriteCount; }
+    public void setFavoriteCount(Integer favoriteCount) { this.favoriteCount = favoriteCount; }
 
-    public void setOriginalPrice(BigDecimal originalPrice) {
-        this.originalPrice = originalPrice;
-    }
+    public String getAuditReason() { return auditReason; }
+    public void setAuditReason(String auditReason) { this.auditReason = auditReason; }
 
-    public String getConditionLevel() {
-        return conditionLevel;
-    }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public void setConditionLevel(String conditionLevel) {
-        this.conditionLevel = conditionLevel;
-    }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
-    public String getCampus() {
-        return campus;
-    }
+    public LocalDateTime getBoostedUntil() { return boostedUntil; }
+    public void setBoostedUntil(LocalDateTime boostedUntil) { this.boostedUntil = boostedUntil; }
 
-    public void setCampus(String campus) {
-        this.campus = campus;
-    }
+    public Boolean getDeleted() { return deleted; }
+    public void setDeleted(Boolean deleted) { this.deleted = deleted; }
 
-    public String getTradeModes() {
-        return tradeModes;
-    }
-
-    public void setTradeModes(String tradeModes) {
-        this.tradeModes = tradeModes;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public Integer getViewCount() {
-        return viewCount;
-    }
-
-    public void setViewCount(Integer viewCount) {
-        this.viewCount = viewCount;
-    }
-
-    public Integer getFavoriteCount() {
-        return favoriteCount;
-    }
-
-    public void setFavoriteCount(Integer favoriteCount) {
-        this.favoriteCount = favoriteCount;
-    }
-
-    public String getAuditReason() {
-        return auditReason;
-    }
-
-    public void setAuditReason(String auditReason) {
-        this.auditReason = auditReason;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
-    }
-
-    public Boolean getDeleted() {
-        return deleted;
-    }
-
-    public void setDeleted(Boolean deleted) {
-        this.deleted = deleted;
-    }
-    public Boolean getIsDeleted() {
-        return deleted;
-    }
-
-    public void setIsDeleted(Boolean isDeleted) {
-        this.deleted = isDeleted;
-    }
+    public Boolean getIsDeleted() { return deleted; }
+    public void setIsDeleted(Boolean isDeleted) { this.deleted = isDeleted; }
 }

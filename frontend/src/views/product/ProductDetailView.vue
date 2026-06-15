@@ -34,6 +34,16 @@
 
           <el-descriptions :column="1" border>
             <el-descriptions-item label="分类">{{ product.categoryName || product.categoryId }}</el-descriptions-item>
+            <el-descriptions-item label="标签">
+              <div class="tag-line">
+                <el-tag v-for="tag in product.tagNames || []" :key="tag" size="small">{{ tag }}</el-tag>
+                <span v-if="!product.tagNames?.length">暂无标签</span>
+              </div>
+            </el-descriptions-item>
+            <el-descriptions-item label="卖家信用">
+              {{ product.sellerCreditLevel || '良好' }}
+              <span v-if="product.sellerCreditScore">({{ product.sellerCreditScore }} 分)</span>
+            </el-descriptions-item>
             <el-descriptions-item label="成色">{{ conditionLabel(product.conditionLevel) }}</el-descriptions-item>
             <el-descriptions-item label="校区">{{ product.campus || '校内' }}</el-descriptions-item>
             <el-descriptions-item label="交易方式">{{ tradeModeText(product.tradeModes) }}</el-descriptions-item>
@@ -373,6 +383,12 @@ function statusType(value?: string) {
   color: #475569;
   line-height: 1.8;
   white-space: pre-wrap;
+}
+.tag-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
 }
 @media (max-width: 860px) {
   .detail-grid {
