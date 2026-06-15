@@ -37,7 +37,6 @@ VALUES
   (N'star_user', @demoPasswordHash, N'star@swapcampus.local', N'USER', N'ACTIVE', 98, 300, 0),
   (N'casual_user', @demoPasswordHash, N'casual@swapcampus.local', N'USER', N'ACTIVE', 72, 45, 0),
   (N'warned_user', @demoPasswordHash, N'warned@swapcampus.local', N'USER', N'ACTIVE', 42, 10, 0),
-  (N'demo_admin', @demoPasswordHash, N'admin@swapcampus.local', N'ADMIN', N'ACTIVE', 100, 0, 0),
   (N'demo_product_reviewer', @demoPasswordHash, N'product-reviewer@swapcampus.local', N'PRODUCT_REVIEWER', N'ACTIVE', 100, 0, 0),
   (N'demo_sysadmin', @demoPasswordHash, N'sysadmin@swapcampus.local', N'SYS_ADMIN', N'ACTIVE', 100, 0, 0);
 
@@ -90,12 +89,6 @@ SELECT id, N'警告用户', N'20260008', N'法学院', N'2021',
 FROM users WHERE username = N'warned_user';
 
 INSERT INTO user_profiles (user_id, real_name, student_no, college, grade, bio, verified_at, contact_masked)
-SELECT id, N'系统管理员', N'ADMIN001', N'信息中心', N'2020',
-       N'平台管理员账号，负责举报处理、用户管理和后台配置。',
-       SYSDATETIME(), N'ADMIN****'
-FROM users WHERE username = N'demo_admin';
-
-INSERT INTO user_profiles (user_id, real_name, student_no, college, grade, bio, verified_at, contact_masked)
 SELECT id, N'商品审核员', N'PRODREV001', N'运营中心', N'2020',
        N'商品审核专员账号，仅用于处理待审核商品的通过与拒绝。',
        SYSDATETIME(), N'PROD****'
@@ -118,12 +111,12 @@ UNION ALL SELECT id, -18, 42, N'多次交易纠纷扣除信用分', N'SEED', NUL
 
 INSERT INTO point_records (user_id, delta, balance_after, reason, ref_type, ref_id, created_at)
 SELECT id, 10, 10, N'每日签到', N'CHECK_IN', 1, DATEADD(DAY, -5, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
-UNION ALL SELECT id, 20, 30, N'完善资料', N'TASK', 101, DATEADD(DAY, -4, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
-UNION ALL SELECT id, 30, 60, N'首次发布商品', N'TASK', 103, DATEADD(DAY, -3, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
-UNION ALL SELECT id, 40, 100, N'完成首次交易', N'TASK', 104, DATEADD(DAY, -2, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
+UNION ALL SELECT id, 20, 30, N'完善资料', N'TASK', (SELECT id FROM point_tasks WHERE code = N'COMPLETE_PROFILE'), DATEADD(DAY, -4, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
+UNION ALL SELECT id, 30, 60, N'首次发布商品', N'TASK', (SELECT id FROM point_tasks WHERE code = N'FIRST_PUBLISH'), DATEADD(DAY, -3, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
+UNION ALL SELECT id, 40, 100, N'完成首次交易', N'TASK', (SELECT id FROM point_tasks WHERE code = N'FIRST_TRADE'), DATEADD(DAY, -2, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
 UNION ALL SELECT id, 60, 160, N'平台活动奖励', N'BONUS', NULL, DATEADD(DAY, -1, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
-UNION ALL SELECT id, 20, 20, N'完善资料', N'TASK', 101, DATEADD(DAY, -3, SYSDATETIME()) FROM users WHERE username = N'demo_seller'
-UNION ALL SELECT id, 30, 50, N'首次发布商品', N'TASK', 103, DATEADD(DAY, -2, SYSDATETIME()) FROM users WHERE username = N'demo_seller'
+UNION ALL SELECT id, 20, 20, N'完善资料', N'TASK', (SELECT id FROM point_tasks WHERE code = N'COMPLETE_PROFILE'), DATEADD(DAY, -3, SYSDATETIME()) FROM users WHERE username = N'demo_seller'
+UNION ALL SELECT id, 30, 50, N'首次发布商品', N'TASK', (SELECT id FROM point_tasks WHERE code = N'FIRST_PUBLISH'), DATEADD(DAY, -2, SYSDATETIME()) FROM users WHERE username = N'demo_seller'
 UNION ALL SELECT id, 30, 80, N'每日签到奖励', N'CHECK_IN', 2, DATEADD(DAY, -1, SYSDATETIME()) FROM users WHERE username = N'demo_seller'
 UNION ALL SELECT id, 20, 20, N'每日签到', N'CHECK_IN', 3, DATEADD(DAY, -1, SYSDATETIME()) FROM users WHERE username = N'muted_user'
 UNION ALL SELECT id, 300, 300, N'平台活动奖励', N'BONUS', NULL, DATEADD(DAY, -1, SYSDATETIME()) FROM users WHERE username = N'star_user'
@@ -135,7 +128,7 @@ SELECT muted.id, admin_user.id, N'多次发布不当言论', DATEADD(DAY, 5, SYS
 FROM users muted
 CROSS JOIN users admin_user
 WHERE muted.username = N'muted_user'
-  AND admin_user.username = N'demo_admin';
+  AND admin_user.username = N'demo_sysadmin';
 
 INSERT INTO point_redemptions (user_id, item_code, item_name, cost_points, status, created_at)
 SELECT id, N'COUPON_10', N'10元优惠券', 200, N'SUCCESS', DATEADD(DAY, -2, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
@@ -148,6 +141,20 @@ VALUES
   (N'数码设备', 10, N'ACTIVE'),
   (N'图书资料', 20, N'ACTIVE'),
   (N'生活用品', 30, N'ACTIVE');
+
+INSERT INTO locker_stations (name, location, status)
+VALUES
+  (N'主校区服务中心 Mock 柜机', N'主校区服务中心一楼大厅', N'ACTIVE'),
+  (N'东区宿舍 Mock 柜机', N'东区 3 号宿舍楼入口', N'ACTIVE');
+
+INSERT INTO locker_boxes (station_id, box_no, size, status)
+SELECT station.id, box.box_no, box.size, N'EMPTY'
+FROM locker_stations station
+CROSS APPLY (VALUES
+  (N'M-01', N'M'), (N'M-02', N'M'), (N'M-03', N'M'),
+  (N'S-01', N'S'), (N'L-01', N'L')
+) AS box(box_no, size)
+WHERE station.name IN (N'主校区服务中心 Mock 柜机', N'东区宿舍 Mock 柜机');
 
 INSERT INTO products (seller_id, category_id, title, description, price, original_price, condition_level, campus, trade_modes, status)
 SELECT seller.id, category.id, N'校园二手 MacBook 保护壳',
@@ -168,4 +175,248 @@ WHERE seller.username = N'demo_seller'
   AND category.name = N'图书资料';
 
 PRINT N'[Seed] 演示账号、学生认证、信用/积分、分类和商品数据已就绪（统一密码: demo123）';
+GO
+
+-- Task C 商品接口演示数据
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
+GO
+
+SET NOCOUNT ON;
+
+IF NOT EXISTS (SELECT 1 FROM users WHERE username = N'demo_seller')
+BEGIN
+  INSERT INTO users (username, password_hash, phone, email, role, status, credit_score, point_balance, is_deleted)
+  VALUES
+    (N'demo_seller', N'$2a$10$7EqJtq98hPqEX7fNZaFWoOhi5m4nYh1FvO8GZ1vDfQYMSfTPxI2X6', N'13800000001', N'seller@swapcampus.local', N'USER', N'ACTIVE', 80, 100, 0);
+
+  INSERT INTO user_profiles (user_id, real_name, student_no, college, grade, avatar_url, bio, verified_at, contact_masked)
+  SELECT id, N'演示卖家', N'2026000001', N'软件学院', N'2023级', NULL, N'用于任务 C 商品接口演示', SYSDATETIME(), N'138****0001'
+  FROM users
+  WHERE username = N'demo_seller';
+END
+
+IF NOT EXISTS (SELECT 1 FROM categories WHERE name = N'教材教辅' AND status = N'ACTIVE')
+  INSERT INTO categories (parent_id, name, sort_order, status)
+  VALUES (NULL, N'教材教辅', 10, N'ACTIVE');
+
+IF NOT EXISTS (SELECT 1 FROM categories WHERE name = N'数码电子' AND status = N'ACTIVE')
+  INSERT INTO categories (parent_id, name, sort_order, status)
+  VALUES (NULL, N'数码电子', 20, N'ACTIVE');
+
+IF NOT EXISTS (SELECT 1 FROM categories WHERE name = N'生活用品' AND status = N'ACTIVE')
+  INSERT INTO categories (parent_id, name, sort_order, status)
+  VALUES (NULL, N'生活用品', 30, N'ACTIVE');
+
+IF NOT EXISTS (SELECT 1 FROM categories WHERE name = N'运动户外' AND status = N'ACTIVE')
+  INSERT INTO categories (parent_id, name, sort_order, status)
+  VALUES (NULL, N'运动户外', 40, N'ACTIVE');
+
+IF NOT EXISTS (SELECT 1 FROM tags WHERE name = N'九成新')
+BEGIN
+  INSERT INTO tags (name, status)
+  VALUES
+    (N'九成新', N'ACTIVE'),
+    (N'可小刀', N'ACTIVE'),
+    (N'当天可取', N'ACTIVE'),
+    (N'教材', N'ACTIVE'),
+    (N'数码', N'ACTIVE');
+END
+
+DECLARE @sellerId BIGINT = (SELECT TOP 1 id FROM users WHERE username = N'demo_seller' ORDER BY id);
+DECLARE @bookCategoryId BIGINT = (SELECT TOP 1 id FROM categories WHERE name = N'教材教辅' AND status = N'ACTIVE' ORDER BY id);
+DECLARE @digitalCategoryId BIGINT = (SELECT TOP 1 id FROM categories WHERE name = N'数码电子' AND status = N'ACTIVE' ORDER BY id);
+DECLARE @lifeCategoryId BIGINT = (SELECT TOP 1 id FROM categories WHERE name = N'生活用品' AND status = N'ACTIVE' ORDER BY id);
+
+IF NOT EXISTS (SELECT 1 FROM products WHERE title = N'九成新高等数学教材')
+BEGIN
+  INSERT INTO products (seller_id, category_id, title, description, price, original_price, condition_level, campus, trade_modes, status, view_count, favorite_count, is_deleted)
+  VALUES
+    (@sellerId, @bookCategoryId, N'九成新高等数学教材', N'同济版高等数学上下册，少量划线，适合大一课程复习。', 35.00, 89.00, N'LIKE_NEW', N'主校区', N'MEETUP,LOCKER', N'ACTIVE', 42, 5, 0),
+    (@sellerId, @digitalCategoryId, N'蓝牙耳机 支持降噪', N'续航正常，配充电盒，适合通勤和自习室使用。', 99.00, 299.00, N'GOOD', N'主校区', N'MEETUP', N'ACTIVE', 88, 12, 0),
+    (@sellerId, @digitalCategoryId, N'机械键盘 87 键', N'茶轴，键帽完整，宿舍自提。', 129.00, 399.00, N'GOOD', N'东校区', N'MEETUP,LOCKER', N'ACTIVE', 61, 9, 0),
+    (@sellerId, @lifeCategoryId, N'宿舍收纳箱三件套', N'搬宿舍闲置，干净无破损。', 25.00, 60.00, N'NORMAL', N'主校区', N'MEETUP', N'ACTIVE', 18, 2, 0),
+    (@sellerId, @bookCategoryId, N'考研英语真题资料', N'近十年真题和解析，部分做过标记。', 45.00, 120.00, N'GOOD', N'西校区', N'LOCKER', N'ACTIVE', 35, 4, 0),
+    (@sellerId, @lifeCategoryId, N'待审核示例商品', N'这个商品用于测试搜索不会返回待审核状态。', 10.00, 30.00, N'NORMAL', N'主校区', N'MEETUP', N'PENDING_REVIEW', 0, 0, 0);
+END
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM product_images pi
+  INNER JOIN products p ON p.id = pi.product_id
+  WHERE p.title = N'九成新高等数学教材'
+)
+BEGIN
+  INSERT INTO product_images (product_id, url, sort_order)
+  SELECT id, N'https://dummyimage.com/600x400/2f6fed/ffffff&text=Math+Book', 0 FROM products WHERE title = N'九成新高等数学教材';
+END
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM product_images pi
+  INNER JOIN products p ON p.id = pi.product_id
+  WHERE p.title = N'蓝牙耳机 支持降噪'
+)
+BEGIN
+  INSERT INTO product_images (product_id, url, sort_order)
+  SELECT id, N'https://dummyimage.com/600x400/111827/ffffff&text=Headphone', 0 FROM products WHERE title = N'蓝牙耳机 支持降噪';
+END
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM product_images pi
+  INNER JOIN products p ON p.id = pi.product_id
+  WHERE p.title = N'机械键盘 87 键'
+)
+BEGIN
+  INSERT INTO product_images (product_id, url, sort_order)
+  SELECT id, N'https://dummyimage.com/600x400/16a34a/ffffff&text=Keyboard', 0 FROM products WHERE title = N'机械键盘 87 键';
+END
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM product_images pi
+  INNER JOIN products p ON p.id = pi.product_id
+  WHERE p.title = N'宿舍收纳箱三件套'
+)
+BEGIN
+  INSERT INTO product_images (product_id, url, sort_order)
+  SELECT id, N'https://dummyimage.com/600x400/f59e0b/ffffff&text=Storage+Box', 0 FROM products WHERE title = N'宿舍收纳箱三件套';
+END
+
+IF NOT EXISTS (
+  SELECT 1
+  FROM product_images pi
+  INNER JOIN products p ON p.id = pi.product_id
+  WHERE p.title = N'考研英语真题资料'
+)
+BEGIN
+  INSERT INTO product_images (product_id, url, sort_order)
+  SELECT id, N'https://dummyimage.com/600x400/ef4444/ffffff&text=English', 0 FROM products WHERE title = N'考研英语真题资料';
+END
+
+PRINT N'Task C demo seed data inserted.';
+GO
+
+-- 合并原 V002 分类去重修复
+DECLARE @digitalDeviceId BIGINT;
+DECLARE @otherCategoryId BIGINT;
+
+SELECT TOP 1 @digitalDeviceId = id
+FROM categories
+WHERE name = N'数码设备'
+  AND status = N'ACTIVE'
+ORDER BY id;
+
+SELECT TOP 1 @otherCategoryId = id
+FROM categories
+WHERE name = N'其他'
+  AND status = N'ACTIVE'
+ORDER BY id;
+
+IF @digitalDeviceId IS NOT NULL
+BEGIN
+  IF @otherCategoryId IS NULL OR @otherCategoryId = @digitalDeviceId
+  BEGIN
+    UPDATE categories
+    SET name = N'其他',
+        sort_order = 60
+    WHERE id = @digitalDeviceId;
+  END
+  ELSE
+  BEGIN
+    UPDATE products
+    SET category_id = @otherCategoryId
+    WHERE category_id = @digitalDeviceId;
+
+    UPDATE categories
+    SET status = N'INACTIVE'
+    WHERE id = @digitalDeviceId;
+  END
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM categories WHERE name = N'其他' AND status = N'ACTIVE')
+BEGIN
+  INSERT INTO categories (parent_id, name, sort_order, status)
+  VALUES (NULL, N'其他', 60, N'ACTIVE');
+END
+GO
+
+IF (SELECT COUNT(*) FROM categories WHERE name = N'生活用品' AND status = N'ACTIVE') > 1
+BEGIN
+  DECLARE @duplicateLifeId BIGINT;
+  SELECT @duplicateLifeId = MAX(id)
+  FROM categories
+  WHERE name = N'生活用品'
+    AND status = N'ACTIVE';
+
+  UPDATE categories
+  SET name = N'学习文具',
+      sort_order = 50
+  WHERE id = @duplicateLifeId;
+END
+GO
+
+IF NOT EXISTS (SELECT 1 FROM categories WHERE name = N'学习文具' AND status = N'ACTIVE')
+BEGIN
+  INSERT INTO categories (parent_id, name, sort_order, status)
+  VALUES (NULL, N'学习文具', 50, N'ACTIVE');
+END
+GO
+
+PRINT N'Duplicate category seed fixed.';
+GO
+
+-- 合并原 V003 扩展标签数据
+DECLARE @tags TABLE (
+  name NVARCHAR(50) NOT NULL PRIMARY KEY
+);
+
+INSERT INTO @tags (name)
+VALUES
+  (N'全新'),
+  (N'仅拆封'),
+  (N'九成新'),
+  (N'八成新'),
+  (N'轻微瑕疵'),
+  (N'功能正常'),
+  (N'配件齐全'),
+  (N'原包装'),
+  (N'保修期内'),
+  (N'可小刀'),
+  (N'不议价'),
+  (N'当天可取'),
+  (N'校内自提'),
+  (N'可送到楼下'),
+  (N'可邮寄'),
+  (N'教材'),
+  (N'考研资料'),
+  (N'课堂笔记'),
+  (N'习题集'),
+  (N'学习文具'),
+  (N'数码'),
+  (N'电脑配件'),
+  (N'手机配件'),
+  (N'耳机音箱'),
+  (N'摄影器材'),
+  (N'运动装备'),
+  (N'宿舍用品'),
+  (N'收纳整理'),
+  (N'生活用品'),
+  (N'美妆护肤'),
+  (N'服饰鞋包'),
+  (N'票券卡券'),
+  (N'手工自制'),
+  (N'毕业出清'),
+  (N'其他');
+
+INSERT INTO tags (name, status)
+SELECT t.name, N'ACTIVE'
+FROM @tags t
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM tags existing
+  WHERE existing.name = t.name
+);
 GO

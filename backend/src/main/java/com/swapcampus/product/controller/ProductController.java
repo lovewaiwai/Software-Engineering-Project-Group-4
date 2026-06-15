@@ -73,6 +73,11 @@ public class ProductController {
         return ApiResponse.ok(productService.listMine(request));
     }
 
+    @GetMapping("/products/favorites")
+    public ApiResponse<PageResponse<ProductResponse>> favorites(@ModelAttribute ProductSearchRequest request) {
+        return ApiResponse.ok(productService.listFavorites(request.getPage(), request.getPageSize()));
+    }
+
     @GetMapping("/products/history")
     public ApiResponse<PageResponse<BrowseHistoryResponse>> history(@ModelAttribute ProductSearchRequest request) {
         return ApiResponse.ok(productService.listBrowseHistory(request.getPage(), request.getPageSize()));

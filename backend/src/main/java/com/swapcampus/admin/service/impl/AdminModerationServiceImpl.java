@@ -2,6 +2,7 @@ package com.swapcampus.admin.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.swapcampus.admin.dto.HandleReportRequest;
+import com.swapcampus.admin.dto.ProductBulkApproveRequest;
 import com.swapcampus.admin.dto.ProductReviewRequest;
 import com.swapcampus.admin.service.AdminModerationService;
 import com.swapcampus.admin.vo.AdminDashboardResponse;
@@ -54,6 +55,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 
@@ -155,6 +157,35 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         productMapper.updateById(product);
         auditLogService.record(reviewerId, "PRODUCT_APPROVE", "PRODUCT", productId, "商品审核通过");
         return toProductResponse(product);
+    }
+
+    @Override
+    @Transactional
+    public List<ProductResponse> bulkApproveProducts(Long reviewerId, ProductBulkApproveRequest request) {
+        Set<String> keywords = normalizeKeywords(request == null ? null : request.getKeywords());
+        if (keywords.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请至少选择一个自动通过关键词");
+        }
+
+        List<ProductEntity> matched = productMapper.selectList(new LambdaQueryWrapper<ProductEntity>()
+                        .eq(ProductEntity::getStatus, ProductStatus.PENDING_REVIEW.name())
+                        .orderByAsc(ProductEntity::getCreatedAt)
+                        .last("OFFSET 0 ROWS FETCH NEXT 200 ROWS ONLY"))
+                .stream()
+                .filter(product -> matchesAnyKeyword(product, keywords))
+                .toList();
+
+        LocalDateTime now = LocalDateTime.now();
+        for (ProductEntity product : matched) {
+            product.setStatus(ProductStatus.ACTIVE.name());
+            product.setAuditReason("关键词自动审核通过");
+            product.setUpdatedAt(now);
+            productMapper.updateById(product);
+            auditLogService.record(reviewerId, "PRODUCT_BULK_APPROVE", "PRODUCT", product.getId(),
+                    "关键词自动审核通过: " + String.join(",", keywords));
+        }
+
+        return matched.stream().map(this::toProductResponse).toList();
     }
 
     @Override
@@ -350,10 +381,31 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         if (user == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND, "用户不存在");
         }
-        if (user.getRole() == Role.PRODUCT_REVIEWER || user.getRole() == Role.ADMIN || user.getRole() == Role.SYS_ADMIN) {
+        if (user.getRole() == Role.PRODUCT_REVIEWER || user.getRole() == Role.SYS_ADMIN) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "不能处置管理员账号");
         }
         return user;
+    }
+
+    private Set<String> normalizeKeywords(List<String> keywords) {
+        Set<String> normalized = new HashSet<>();
+        if (keywords == null) {
+            return normalized;
+        }
+        for (String keyword : keywords) {
+            String value = normalizeToNull(keyword);
+            if (value != null) {
+                normalized.add(value.toLowerCase(Locale.ROOT));
+            }
+        }
+        return normalized;
+    }
+
+    private boolean matchesAnyKeyword(ProductEntity product, Set<String> keywords) {
+        String searchable = ((product.getTitle() == null ? "" : product.getTitle()) + " "
+                + (product.getDescription() == null ? "" : product.getDescription()))
+                .toLowerCase(Locale.ROOT);
+        return keywords.stream().anyMatch(searchable::contains);
     }
 
     private AdminUserSummaryResponse buildUserSummary(Long userId) {

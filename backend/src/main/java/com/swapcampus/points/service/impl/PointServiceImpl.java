@@ -23,7 +23,10 @@ import com.swapcampus.points.vo.PointRedemptionResponse;
 import com.swapcampus.points.vo.PointRecordResponse;
 import com.swapcampus.points.vo.PointTaskResponse;
 import com.swapcampus.product.entity.ProductEntity;
+import com.swapcampus.common.enums.OrderStatus;
 import com.swapcampus.product.mapper.ProductMapper;
+import com.swapcampus.order.entity.OrderEntity;
+import com.swapcampus.order.mapper.OrderMapper;
 import com.swapcampus.user.entity.UserProfileEntity;
 import com.swapcampus.user.mapper.UserMapper;
 import com.swapcampus.user.mapper.UserProfileMapper;
@@ -61,6 +64,7 @@ public class PointServiceImpl implements PointService {
     private final AuditLogService auditLogService;
     private final UserAccountService userAccountService;
     private final ProductMapper productMapper;
+    private final OrderMapper orderMapper;
 
     public PointServiceImpl(PointTaskMapper pointTaskMapper,
                             PointRecordMapper pointRecordMapper,
@@ -69,7 +73,8 @@ public class PointServiceImpl implements PointService {
                             UserProfileMapper userProfileMapper,
                             AuditLogService auditLogService,
                             UserAccountService userAccountService,
-                            ProductMapper productMapper) {
+                            ProductMapper productMapper,
+                            OrderMapper orderMapper) {
         this.pointTaskMapper = pointTaskMapper;
         this.pointRecordMapper = pointRecordMapper;
         this.pointRedemptionMapper = pointRedemptionMapper;
@@ -78,6 +83,7 @@ public class PointServiceImpl implements PointService {
         this.auditLogService = auditLogService;
         this.userAccountService = userAccountService;
         this.productMapper = productMapper;
+        this.orderMapper = orderMapper;
     }
 
     @Override
@@ -305,6 +311,21 @@ public class PointServiceImpl implements PointService {
                     && notBlank(profile.getStudentNo())
                     && notBlank(profile.getCollege())
                     && profile.getVerifiedAt() != null;
+        }
+        if ("PUBLISH".equalsIgnoreCase(task.getTaskType())) {
+            Long productCount = productMapper.selectCount(new LambdaQueryWrapper<ProductEntity>()
+                    .eq(ProductEntity::getSellerId, userId)
+                    .eq(ProductEntity::getDeleted, false));
+            return productCount != null && productCount > 0;
+        }
+        if ("TRADE".equalsIgnoreCase(task.getTaskType())) {
+            Long orderCount = orderMapper.selectCount(new LambdaQueryWrapper<OrderEntity>()
+                    .and(wrapper -> wrapper
+                            .eq(OrderEntity::getBuyerId, userId)
+                            .or()
+                            .eq(OrderEntity::getSellerId, userId))
+                    .eq(OrderEntity::getStatus, OrderStatus.COMPLETED.name()));
+            return orderCount != null && orderCount > 0;
         }
         return false;
     }

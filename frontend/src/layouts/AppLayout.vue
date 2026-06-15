@@ -8,26 +8,14 @@
           <small>北林闲置</small>
         </span>
       </div>
-      <el-menu router :default-active="$route.path" class="nav-menu">
+      <el-menu router :default-active="activeMenu" class="nav-menu">
         <el-menu-item index="/">
           <el-icon><House /></el-icon>
           <span>首页</span>
         </el-menu-item>
-        <el-menu-item index="/products">
-          <el-icon><Goods /></el-icon>
-          <span>商品</span>
-        </el-menu-item>
-        <el-menu-item v-if="auth.isLoggedIn && !auth.isAdmin" index="/products/mine">
-          <el-icon><Goods /></el-icon>
-          <span>我的发布</span>
-        </el-menu-item>
-        <el-menu-item v-if="auth.isLoggedIn && !auth.isAdmin" index="/products/history">
-          <el-icon><Clock /></el-icon>
-          <span>浏览历史</span>
-        </el-menu-item>
-        <el-menu-item index="/orders">
-          <el-icon><Tickets /></el-icon>
-          <span>订单</span>
+        <el-menu-item v-if="auth.isLoggedIn && !auth.isAdmin" index="/me">
+          <el-icon><User /></el-icon>
+          <span>我的</span>
         </el-menu-item>
         <el-menu-item v-if="!auth.isAdmin" index="/chat" class="chat-menu-item">
           <el-icon><ChatDotRound /></el-icon>
@@ -63,17 +51,35 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { ChatDotRound, Clock, Goods, House, Tickets, User } from '@element-plus/icons-vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ChatDotRound, House, User } from '@element-plus/icons-vue'
 import UnreadBadge from '../components/chat/UnreadBadge.vue'
 import { fetchCurrentUser } from '../api/user'
 import { useAuthStore } from '../stores/auth'
 import { useChatNotifyStore } from '../stores/chatNotify'
 
 const router = useRouter()
+const route = useRoute()
 const auth = useAuthStore()
 const chatNotify = useChatNotifyStore()
+
+const activeMenu = computed(() => {
+  if (
+    route.path === '/me' ||
+    route.path.startsWith('/products/new') ||
+    route.path.startsWith('/products/mine') ||
+    route.path.includes('/edit') ||
+    route.path.startsWith('/products/favorites') ||
+    route.path.startsWith('/products/history') ||
+    route.path.startsWith('/orders') ||
+    route.path.startsWith('/profile') ||
+    route.path.startsWith('/points')
+  ) {
+    return '/me'
+  }
+  return route.path
+})
 
 function syncChatNotify() {
   if (auth.isLoggedIn && !auth.isAdmin) {

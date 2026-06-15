@@ -1,5 +1,6 @@
 package com.swapcampus.admin.service.impl;
 
+import com.swapcampus.admin.dto.ProductBulkApproveRequest;
 import com.swapcampus.admin.dto.ProductReviewRequest;
 import com.swapcampus.admin.dto.HandleReportRequest;
 import com.swapcampus.admin.vo.AdminUserSummaryResponse;
@@ -172,8 +173,27 @@ class AdminModerationServiceImplTest {
     }
 
     @Test
+    void bulkApproveProductsActivatesKeywordMatchedPendingProducts() {
+        ProductEntity product = pendingProduct();
+        product.setTitle("数据结构教材");
+        ProductBulkApproveRequest request = new ProductBulkApproveRequest();
+        request.setKeywords(List.of("教材", "计算器"));
+        when(productMapper.selectList(any())).thenReturn(List.of(product));
+        when(categoryMapper.selectById(2L)).thenReturn(category());
+        when(productImageMapper.selectList(any())).thenReturn(List.of());
+
+        List<ProductResponse> response = adminService.bulkApproveProducts(99L, request);
+
+        assertEquals(1, response.size());
+        assertEquals(ProductStatus.ACTIVE.name(), product.getStatus());
+        assertEquals("关键词自动审核通过", product.getAuditReason());
+        verify(productMapper).updateById(product);
+        verify(auditLogService).record(eq(99L), eq("PRODUCT_BULK_APPROVE"), eq("PRODUCT"), eq(10L), anyString());
+    }
+
+    @Test
     void banUserRejectsAdminAccounts() {
-        UserEntity admin = user(2L, Role.ADMIN, UserStatus.ACTIVE);
+        UserEntity admin = user(2L, Role.SYS_ADMIN, UserStatus.ACTIVE);
         when(userMapper.selectById(2L)).thenReturn(admin);
 
         BusinessException exception = assertThrows(BusinessException.class, () -> adminService.banUser(99L, 2L, "bad behavior"));

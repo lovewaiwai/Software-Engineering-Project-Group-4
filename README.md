@@ -30,7 +30,7 @@ docker compose up -d
 这条命令会自动启动：
 
 - `sqlserver`：Docker 中的 SQL Server 2022。
-- `db-init`：重建 `SwapCampus` 数据库，并自动执行 `db/migrations/*.sql` 和 `db/seeds/*.sql`。
+- `db-init`：重建 `SwapCampus` 数据库，并自动执行 `db/migrations/V001__init.sql` 和 `db/seeds/V001__demo_accounts.sql`。
 - `minio`：本地对象存储服务。
 
 如果想一键启动基础设施、后端和前端，全套都通过 Docker 运行：
@@ -106,17 +106,18 @@ WebSocket 聊天占位: ws://localhost:8080/ws/chat
 
 ## 数据库脚本机制
 
-Docker 启动时会自动运行 `db-init` 服务。默认行为是先删除并重建 `SwapCampus` 数据库，再按文件名顺序执行：
-
-```text
-db/migrations/*.sql
-db/seeds/*.sql
-```
-
-当前建表脚本：
+Docker 启动时会自动运行 `db-init` 服务。默认行为是先删除并重建 `SwapCampus` 数据库，再执行唯一结构脚本和唯一种子脚本：
 
 ```text
 db/migrations/V001__init.sql
+db/seeds/V001__demo_accounts.sql
+```
+
+当前数据库脚本：
+
+```text
+db/migrations/V001__init.sql
+db/seeds/V001__demo_accounts.sql
 ```
 
 这意味着每次执行下面命令都会清空 SQL Server 里的 `SwapCampus` 业务数据，然后重新建表和导入种子数据：
@@ -125,23 +126,12 @@ db/migrations/V001__init.sql
 docker compose up -d db-init
 ```
 
-后续要加演示数据时，把 SQL 文件放到：
-
-```text
-db/seeds/
-```
-
-例如：
-
-```text
-db/seeds/V001__demo_users.sql
-db/seeds/V002__demo_products.sql
-```
+后续新增表、字段、索引时直接合并到 `db/migrations/V001__init.sql`；新增演示账号、分类、标签、商品等种子数据时直接合并到 `db/seeds/V001__demo_accounts.sql`，避免初始化顺序分散。
 
 然后重新执行：
 
 ```powershell
-docker compose up -d db-initdocker compose --profile app up -d --build
+docker compose up -d db-init
 ```
 
 也可以手动触发数据库脚本同步：
@@ -231,8 +221,8 @@ Authorization: Bearer <token>
 普通买家/卖家: demo_buyer / demo123, demo_seller / demo123
 商品审核员: demo_product_reviewer / demo123
 默认商品审核员: product_reviewer / Product1234!
-系统审核员: reviewer / Admin1234!
-管理员: demo_admin / demo123
+系统管理员: demo_sysadmin / demo123
+默认系统管理员: sys_admin / SysAdmin1234!
 ```
 
 Swagger UI 支持 Bearer Token 认证，打开 `http://localhost:8080/swagger-ui.html` 后点击 Authorize，填入登录接口返回的 JWT 即可调试受保护接口。
@@ -436,7 +426,7 @@ SQL Server Express 常见实例名：
 
 ## 当前 TODO
 
-- Agent A 后续可补充基于方法注解的角色权限矩阵，例如后台接口限制 `ADMIN` / `SYS_ADMIN`。
+- Agent A 后续可补充基于方法注解的角色权限矩阵，例如后台接口限制 `PRODUCT_REVIEWER` / `SYS_ADMIN`。
 - MyBatis-Plus 当前依赖 SQL Server 默认值写入 `created_at`、`updated_at`，后续如需要统一更新时间，可补简单 `MetaObjectHandler`。
 - `users`、`user_profiles`、`audit_logs` 已替换为真实表实体；其他业务模块占位 Entity 仍需按各自 Agent 任务替换。
 - 按 D4-D5 接口草案实现各模块 Controller 和 Service。

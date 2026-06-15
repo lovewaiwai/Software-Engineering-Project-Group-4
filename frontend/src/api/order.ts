@@ -35,6 +35,9 @@ export interface Delivery {
     taskNo: string
     orderId: number
     stationId: number
+    boxId: number
+    stationName?: string
+    boxNo?: string
     pickupCode: string
     status: string
     storedAt?: string

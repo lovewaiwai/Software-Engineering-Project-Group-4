@@ -4,8 +4,11 @@ import com.swapcampus.common.api.ApiResponse;
 import com.swapcampus.delivery.dto.DeliveryRequest;
 import com.swapcampus.delivery.service.DeliveryService;
 import com.swapcampus.delivery.vo.DeliveryResponse;
+import com.swapcampus.delivery.vo.LockerStationResponse;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/delivery")
@@ -20,6 +23,11 @@ public class DeliveryController {
     @PostMapping("/reserve")
     public ApiResponse<DeliveryResponse> reserveLocker(@Valid @RequestBody DeliveryRequest request) {
         return ApiResponse.ok(deliveryService.reserveLocker(request));
+    }
+
+    @GetMapping("/stations")
+    public ApiResponse<List<LockerStationResponse>> listStations() {
+        return ApiResponse.ok(deliveryService.listStations());
     }
 
     @PostMapping("/{taskNo}/stored")

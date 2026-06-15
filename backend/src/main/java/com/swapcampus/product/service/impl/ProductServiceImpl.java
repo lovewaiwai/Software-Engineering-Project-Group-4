@@ -240,6 +240,20 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public PageResponse<ProductResponse> listFavorites(long page, long pageSize) {
+        Long userId = CurrentUserContext.requireUserId();
+        long normalizedPage = Math.max(1, page);
+        long normalizedPageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, pageSize));
+        long offset = (normalizedPage - 1) * normalizedPageSize;
+        List<ProductResponse> items = productFavoriteMapper.selectFavoriteProductsByUser(userId, offset, normalizedPageSize)
+                .stream()
+                .map(product -> toResponse(product, userId))
+                .toList();
+        long total = Optional.ofNullable(productFavoriteMapper.countFavoriteProductsByUser(userId)).orElse(0L);
+        return new PageResponse<>(items, normalizedPage, normalizedPageSize, total);
+    }
+
+    @Override
     public PageResponse<BrowseHistoryResponse> listBrowseHistory(long page, long pageSize) {
         Long userId = CurrentUserContext.requireUserId();
         long normalizedPage = Math.max(1, page);
