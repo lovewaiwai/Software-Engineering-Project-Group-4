@@ -8,7 +8,7 @@ interface AuthState {
   username: string
   realName: string
   verifiedAt: string
-  role: 'USER' | 'PRODUCT_REVIEWER' | 'ADMIN' | 'SYS_ADMIN' | ''
+  role: 'USER' | 'PRODUCT_REVIEWER' | 'SYS_ADMIN' | ''
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -23,9 +23,9 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isLoggedIn: (state) => !!state.token,
     isVerified: (state) => !!state.verifiedAt,
-    isAdmin: (state) => state.role === 'PRODUCT_REVIEWER' || state.role === 'ADMIN' || state.role === 'SYS_ADMIN',
-    isSystemReviewer: (state) => state.role === 'ADMIN' || state.role === 'SYS_ADMIN',
-    canReviewProducts: (state) => state.role === 'PRODUCT_REVIEWER' || state.role === 'ADMIN' || state.role === 'SYS_ADMIN',
+    isAdmin: (state) => state.role === 'PRODUCT_REVIEWER' || state.role === 'SYS_ADMIN',
+    isSystemReviewer: (state) => state.role === 'SYS_ADMIN',
+    canReviewProducts: (state) => state.role === 'PRODUCT_REVIEWER' || state.role === 'SYS_ADMIN',
     displayName: (state) => state.realName || state.username || '用户',
   },
   actions: {

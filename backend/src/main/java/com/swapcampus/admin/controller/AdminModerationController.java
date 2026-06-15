@@ -2,6 +2,7 @@ package com.swapcampus.admin.controller;
 
 import com.swapcampus.admin.dto.AdminUserActionRequest;
 import com.swapcampus.admin.dto.HandleReportRequest;
+import com.swapcampus.admin.dto.ProductBulkApproveRequest;
 import com.swapcampus.admin.dto.ProductReviewRequest;
 import com.swapcampus.admin.service.AdminModerationService;
 import com.swapcampus.admin.vo.AdminDashboardResponse;
@@ -45,6 +46,12 @@ public class AdminModerationController {
     public ApiResponse<ProductResponse> approveProduct(@PathVariable Long productId) {
         Long reviewerId = requireProductReviewer();
         return ApiResponse.ok(adminModerationService.approveProduct(reviewerId, productId));
+    }
+
+    @PostMapping("/products/bulk-approve")
+    public ApiResponse<List<ProductResponse>> bulkApproveProducts(@Valid @RequestBody ProductBulkApproveRequest request) {
+        Long reviewerId = requireProductReviewer();
+        return ApiResponse.ok(adminModerationService.bulkApproveProducts(reviewerId, request));
     }
 
     @PostMapping("/products/{productId}/reject")
@@ -127,8 +134,8 @@ public class AdminModerationController {
     private Long requireSystemReviewer() {
         Role role = CurrentUserContext.currentRole()
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
-        if (role != Role.ADMIN && role != Role.SYS_ADMIN) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "需要系统审核员权限");
+        if (role != Role.SYS_ADMIN) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "需要系统管理员权限");
         }
         return CurrentUserContext.requireUserId();
     }
@@ -136,7 +143,7 @@ public class AdminModerationController {
     private Long requireProductReviewer() {
         Role role = CurrentUserContext.currentRole()
                 .orElseThrow(() -> new BusinessException(ErrorCode.FORBIDDEN));
-        if (role != Role.PRODUCT_REVIEWER && role != Role.ADMIN && role != Role.SYS_ADMIN) {
+        if (role != Role.PRODUCT_REVIEWER && role != Role.SYS_ADMIN) {
             throw new BusinessException(ErrorCode.FORBIDDEN, "需要商品审核员权限");
         }
         return CurrentUserContext.requireUserId();

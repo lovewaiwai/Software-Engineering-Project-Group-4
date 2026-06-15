@@ -73,8 +73,7 @@ const pageTitle = computed(() => {
 
 const roleLabel = computed(() => {
   if (auth.role === 'PRODUCT_REVIEWER') return '商品审核员'
-  if (auth.role === 'SYS_ADMIN') return '超级管理员'
-  return '系统审核员'
+  return '系统管理员'
 })
 
 function handleCommand(command: string) {

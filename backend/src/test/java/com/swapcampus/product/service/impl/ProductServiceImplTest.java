@@ -168,6 +168,20 @@ class ProductServiceImplTest {
     }
 
     @Test
+    void listFavoritesReturnsFavoritedProducts() {
+        ProductEntity product = product(10L, 8L, ProductStatus.ACTIVE);
+        when(productFavoriteMapper.selectFavoriteProductsByUser(7L, 0L, 20L)).thenReturn(List.of(product));
+        when(productFavoriteMapper.countFavoriteProductsByUser(7L)).thenReturn(1L);
+        stubResponseDependencies(category(2L, null, "数码"), List.of(), List.of(), List.of(), 1L, seller(8L, 88));
+
+        PageResponse<ProductResponse> response = service.listFavorites(1, 20);
+
+        assertEquals(1, response.getTotal());
+        assertEquals(10L, response.getItems().get(0).getId());
+        assertEquals(true, response.getItems().get(0).getFavorited());
+    }
+
+    @Test
     void favoriteInsertsOnlyWhenActiveAndNotAlreadyFavorited() {
         ProductEntity product = product(10L, 8L, ProductStatus.ACTIVE);
         when(productMapper.selectById(10L)).thenReturn(product);

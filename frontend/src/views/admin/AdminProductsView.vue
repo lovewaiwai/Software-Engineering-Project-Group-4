@@ -8,6 +8,38 @@
       <el-button type="primary" :icon="Refresh" :loading="loading" @click="loadProducts">刷新列表</el-button>
     </div>
 
+    <section class="bulk-panel">
+      <div class="bulk-head">
+        <div>
+          <h2>关键词批量通过</h2>
+          <p>适合教材、文具、数码配件等低风险闲置品；命中标题或描述后自动审核通过。</p>
+        </div>
+        <el-button type="success" :loading="bulkLoading" :disabled="!selectedKeywords.length" @click="handleBulkApprove">
+          一键通过命中商品
+        </el-button>
+      </div>
+      <div class="keyword-row">
+        <el-check-tag
+          v-for="keyword in keywordPresets"
+          :key="keyword"
+          :checked="selectedKeywords.includes(keyword)"
+          @change="toggleKeyword(keyword)"
+        >
+          {{ keyword }}
+        </el-check-tag>
+      </div>
+      <div class="custom-keyword">
+        <el-input
+          v-model="customKeyword"
+          placeholder="补充关键词，例如：画板、球拍"
+          maxlength="30"
+          clearable
+          @keyup.enter="addCustomKeyword"
+        />
+        <el-button @click="addCustomKeyword">添加</el-button>
+      </div>
+    </section>
+
     <div class="review-panel">
       <el-table
         v-loading="loading"
@@ -101,7 +133,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
-import { approveProduct, listPendingProducts, rejectProduct } from '../../api/admin'
+import { approveProduct, bulkApproveProducts, listPendingProducts, rejectProduct } from '../../api/admin'
 import type { ProductItem } from '../../api/product'
 import { formatDateTime } from '../../utils/adminLabels'
 import { getApiErrorMessage } from '../../utils/apiError'
@@ -112,6 +144,25 @@ const actingId = ref<number | null>(null)
 const rejectDialogVisible = ref(false)
 const rejectingProduct = ref<ProductItem | null>(null)
 const rejectReason = ref('')
+const keywordPresets = ref([
+  '教材',
+  '课本',
+  '习题集',
+  '复习资料',
+  '笔记',
+  '计算器',
+  '台灯',
+  '耳机',
+  '键盘',
+  '鼠标',
+  '保护壳',
+  '自行车',
+  '篮球',
+  '文具',
+])
+const selectedKeywords = ref<string[]>(['教材', '课本', '复习资料', '计算器', '台灯', '耳机', '键盘', '鼠标'])
+const customKeyword = ref('')
+const bulkLoading = ref(false)
 
 onMounted(loadProducts)
 
@@ -144,6 +195,37 @@ async function handleApprove(productId: number) {
   } finally {
     actingId.value = null
   }
+}
+
+async function handleBulkApprove() {
+  bulkLoading.value = true
+  try {
+    const response = await bulkApproveProducts(selectedKeywords.value)
+    if (response.code !== 0) {
+      throw new Error(response.message || '批量审核失败')
+    }
+    const approvedIds = new Set(response.data.map((item) => item.id))
+    products.value = products.value.filter((item) => !approvedIds.has(item.id))
+    ElMessage.success(response.data.length ? `已自动通过 ${response.data.length} 个商品` : '没有商品命中当前关键词')
+  } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '批量审核失败'))
+  } finally {
+    bulkLoading.value = false
+  }
+}
+
+function toggleKeyword(keyword: string) {
+  selectedKeywords.value = selectedKeywords.value.includes(keyword)
+    ? selectedKeywords.value.filter((item) => item !== keyword)
+    : [...selectedKeywords.value, keyword]
+}
+
+function addCustomKeyword() {
+  const keyword = customKeyword.value.trim()
+  if (!keyword) return
+  if (!keywordPresets.value.includes(keyword)) keywordPresets.value.push(keyword)
+  if (!selectedKeywords.value.includes(keyword)) selectedKeywords.value.push(keyword)
+  customKeyword.value = ''
 }
 
 function openReject(product: ProductItem) {
@@ -232,6 +314,40 @@ function tradeModeLabel(mode: string) {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   padding: 14px;
+}
+.bulk-panel {
+  background: #fff;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  padding: 14px;
+}
+.bulk-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.bulk-head h2 {
+  margin: 0;
+  font-size: 16px;
+  color: #0f172a;
+}
+.bulk-head p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+.keyword-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.custom-keyword {
+  display: flex;
+  max-width: 420px;
+  gap: 8px;
+  margin-top: 12px;
 }
 .review-table :deep(.el-table__header th) {
   background: #f8fafc;

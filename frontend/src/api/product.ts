@@ -111,6 +111,11 @@ export async function listMyProducts(params: ProductSearchParams) {
   return data
 }
 
+export async function listFavoriteProducts(params: Pick<ProductSearchParams, 'page' | 'pageSize'>) {
+  const { data } = await apiClient.get<ApiResponse<PageResponse<ProductItem>>>('/products/favorites', { params })
+  return data
+}
+
 export async function listBrowseHistory(params: Pick<ProductSearchParams, 'page' | 'pageSize'>) {
   const { data } = await apiClient.get<ApiResponse<PageResponse<BrowseHistoryItem>>>('/products/history', { params })
   return data

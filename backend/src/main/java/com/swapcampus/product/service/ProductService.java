@@ -27,6 +27,8 @@ public interface ProductService {
 
     PageResponse<ProductResponse> listMine(ProductSearchRequest request);
 
+    PageResponse<ProductResponse> listFavorites(long page, long pageSize);
+
     PageResponse<BrowseHistoryResponse> listBrowseHistory(long page, long pageSize);
 
     ProductResponse submitForReview(Long id);

@@ -68,12 +68,12 @@ CREATE TABLE tags (
 CREATE TABLE products (
   id BIGINT IDENTITY(1,1) PRIMARY KEY,
   seller_id BIGINT NOT NULL,
-  category_id BIGINT NOT NULL,
-  title NVARCHAR(120) NOT NULL,
+  category_id BIGINT NULL,
+  title NVARCHAR(120) NULL,
   description NVARCHAR(MAX) NULL,
-  price DECIMAL(10,2) NOT NULL,
+  price DECIMAL(10,2) NULL,
   original_price DECIMAL(10,2) NULL,
-  condition_level NVARCHAR(20) NOT NULL,
+  condition_level NVARCHAR(20) NULL,
   campus NVARCHAR(50) NULL,
   trade_modes NVARCHAR(100) NOT NULL DEFAULT 'MEETUP',
   status NVARCHAR(30) NOT NULL DEFAULT 'DRAFT',
@@ -82,6 +82,7 @@ CREATE TABLE products (
   audit_reason NVARCHAR(300) NULL,
   created_at DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
   updated_at DATETIME2(0) NOT NULL DEFAULT SYSDATETIME(),
+  boosted_until DATETIME2(0) NULL,
   is_deleted BIT NOT NULL DEFAULT 0,
   CONSTRAINT fk_products_seller FOREIGN KEY (seller_id) REFERENCES users(id),
   CONSTRAINT fk_products_category FOREIGN KEY (category_id) REFERENCES categories(id)
@@ -353,6 +354,7 @@ CREATE TABLE user_blocks (
 );
 
 CREATE INDEX idx_products_search ON products(status, category_id, price, created_at);
+CREATE INDEX idx_products_boosted ON products(boosted_until);
 CREATE INDEX idx_orders_buyer ON orders(buyer_id, created_at);
 CREATE INDEX idx_orders_seller ON orders(seller_id, created_at);
 CREATE INDEX idx_chat_messages_session ON chat_messages(session_id, created_at);

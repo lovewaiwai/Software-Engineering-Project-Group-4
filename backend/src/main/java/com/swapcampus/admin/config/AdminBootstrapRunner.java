@@ -18,9 +18,9 @@ import org.springframework.stereotype.Component;
 public class AdminBootstrapRunner implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(AdminBootstrapRunner.class);
-    private static final String ADMIN_USERNAME = "reviewer";
-    private static final String ADMIN_PASSWORD = "Admin1234!";
-    private static final String ADMIN_REAL_NAME = "平台审核员";
+    private static final String SYS_ADMIN_USERNAME = "sys_admin";
+    private static final String SYS_ADMIN_PASSWORD = "SysAdmin1234!";
+    private static final String SYS_ADMIN_REAL_NAME = "系统管理员";
     private static final String PRODUCT_REVIEWER_USERNAME = "product_reviewer";
     private static final String PRODUCT_REVIEWER_PASSWORD = "Product1234!";
     private static final String PRODUCT_REVIEWER_REAL_NAME = "商品审核员";
@@ -39,7 +39,7 @@ public class AdminBootstrapRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        createAccountIfMissing(ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_REAL_NAME, Role.ADMIN);
+        createAccountIfMissing(SYS_ADMIN_USERNAME, SYS_ADMIN_PASSWORD, SYS_ADMIN_REAL_NAME, Role.SYS_ADMIN);
         createAccountIfMissing(
                 PRODUCT_REVIEWER_USERNAME,
                 PRODUCT_REVIEWER_PASSWORD,
@@ -70,6 +70,6 @@ public class AdminBootstrapRunner implements ApplicationRunner {
         profile.setRealName(realName);
         userProfileMapper.insert(profile);
 
-        log.info("Created default admin account: username={}, password={}", username, password);
+        log.info("Created default admin account: username={}, role={}", username, role);
     }
 }

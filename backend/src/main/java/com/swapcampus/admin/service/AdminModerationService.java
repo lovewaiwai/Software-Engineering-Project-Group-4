@@ -1,6 +1,7 @@
 package com.swapcampus.admin.service;
 
 import com.swapcampus.admin.dto.HandleReportRequest;
+import com.swapcampus.admin.dto.ProductBulkApproveRequest;
 import com.swapcampus.admin.dto.ProductReviewRequest;
 import com.swapcampus.admin.vo.AdminDashboardResponse;
 import com.swapcampus.admin.vo.AdminReportDetailResponse;
@@ -17,6 +18,8 @@ public interface AdminModerationService {
     List<ProductResponse> listPendingProducts();
 
     ProductResponse approveProduct(Long reviewerId, Long productId);
+
+    List<ProductResponse> bulkApproveProducts(Long reviewerId, ProductBulkApproveRequest request);
 
     ProductResponse rejectProduct(Long reviewerId, Long productId, ProductReviewRequest request);
 

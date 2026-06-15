@@ -17,6 +17,11 @@ export async function approveProduct(productId: number) {
   return data
 }
 
+export async function bulkApproveProducts(keywords: string[]) {
+  const { data } = await apiClient.post<ApiResponse<ProductItem[]>>('/admin/products/bulk-approve', { keywords })
+  return data
+}
+
 export async function rejectProduct(productId: number, reason: string) {
   const { data } = await apiClient.post<ApiResponse<ProductItem>>(`/admin/products/${productId}/reject`, { reason })
   return data
@@ -59,5 +64,38 @@ export async function muteUser(userId: number, payload?: { note?: string; muteHo
 
 export async function unmuteUser(userId: number, note?: string) {
   const { data } = await apiClient.post<ApiResponse<AdminUserSummary>>(`/admin/users/${userId}/unmute`, { note })
+  return data
+}
+
+export interface LockerStation {
+  id: number
+  name: string
+  location: string
+  status: string
+  emptyBoxes: number
+  reservedBoxes: number
+  occupiedBoxes: number
+}
+
+export interface LockerTask {
+  id: number
+  taskNo: string
+  orderId: number
+  stationName: string
+  boxNo: string
+  status: string
+  pickupCode: string
+  storedAt?: string
+  pickedUpAt?: string
+  createdAt: string
+}
+
+export async function listLockerStations() {
+  const { data } = await apiClient.get<ApiResponse<LockerStation[]>>('/admin/lockers/stations')
+  return data
+}
+
+export async function listLockerTasks() {
+  const { data } = await apiClient.get<ApiResponse<LockerTask[]>>('/admin/lockers/tasks')
   return data
 }

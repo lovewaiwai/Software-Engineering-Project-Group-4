@@ -13,9 +13,11 @@ import ProductDetailView from '../views/product/ProductDetailView.vue'
 import ProductCreateView from '../views/product/ProductCreateView.vue'
 import MyProductsView from '../views/product/MyProductsView.vue'
 import ProductHistoryView from '../views/product/ProductHistoryView.vue'
+import FavoriteProductsView from '../views/product/FavoriteProductsView.vue'
 import OrderListView from '../views/order/OrderListView.vue'
 import OrderDetailView from '../views/order/OrderDetailView.vue'
 import ChatView from '../views/chat/ChatView.vue'
+import MyCenterView from '../views/me/MyCenterView.vue'
 import ProfileView from '../views/profile/ProfileView.vue'
 import PointsView from '../views/points/PointsView.vue'
 
@@ -41,12 +43,14 @@ const routes: RouteRecordRaw[] = [
       { path: 'products', component: ProductListView },
       { path: 'products/new', component: ProductCreateView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
       { path: 'products/mine', component: MyProductsView, meta: { requiresAuth: true, requiresUser: true } },
+      { path: 'products/favorites', component: FavoriteProductsView, meta: { requiresAuth: true, requiresUser: true } },
       { path: 'products/history', component: ProductHistoryView, meta: { requiresAuth: true, requiresUser: true } },
       { path: 'products/:id/edit', component: ProductCreateView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
       { path: 'products/:id', component: ProductDetailView, props: true },
       { path: 'orders', component: OrderListView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
       { path: 'orders/:id', component: OrderDetailView, props: true, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
       { path: 'chat', component: ChatView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
+      { path: 'me', component: MyCenterView, meta: { requiresAuth: true, requiresUser: true } },
       { path: 'profile/:id', component: ProfileView, props: true, meta: { requiresAuth: true } },
       { path: 'points', component: PointsView, meta: { requiresAuth: true, requiresUser: true } },
     ],

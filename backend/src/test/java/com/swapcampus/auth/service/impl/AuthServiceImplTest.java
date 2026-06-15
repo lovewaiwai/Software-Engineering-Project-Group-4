@@ -112,7 +112,7 @@ class AuthServiceImplTest {
     @Test
     void registerRejectsAdminSelfRegistration() {
         RegisterRequest request = registerRequest();
-        request.setRole(Role.ADMIN);
+        request.setRole(Role.SYS_ADMIN);
         when(userMapper.selectCount(any())).thenReturn(0L);
 
         BusinessException exception = assertThrows(BusinessException.class, () -> authService.register(request));

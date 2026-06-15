@@ -69,6 +69,8 @@
           <h2>柜机信息</h2>
           <dl>
             <dt>任务编号</dt><dd>{{ delivery.taskNo }}</dd>
+            <dt>柜机站点</dt><dd>{{ delivery.stationName || `站点 #${delivery.stationId}` }}</dd>
+            <dt>格口</dt><dd>{{ delivery.boxNo || `#${delivery.boxId}` }}</dd>
             <dt>状态</dt><dd>{{ deliveryStatusLabel(delivery.status) }}</dd>
             <dt>取件码</dt><dd><el-tag type="danger" size="large">{{ delivery.pickupCode }}</el-tag></dd>
           </dl>
