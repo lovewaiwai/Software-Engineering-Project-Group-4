@@ -28,6 +28,7 @@ import com.swapcampus.product.mapper.ProductMapper;
 import com.swapcampus.product.mapper.ProductTagMapper;
 import com.swapcampus.product.mapper.TagMapper;
 import com.swapcampus.product.service.ProductService;
+import com.swapcampus.product.vo.BrowseHistoryResponse;
 import com.swapcampus.product.vo.CategoryResponse;
 import com.swapcampus.product.vo.ProductResponse;
 import com.swapcampus.product.vo.TagResponse;
@@ -80,11 +81,6 @@ public class ProductServiceImpl implements ProductService {
         this.productTagMapper = productTagMapper;
         this.userMapper = userMapper;
         this.userVerificationGuard = userVerificationGuard;
-    }
-
-    @Override
-    public String moduleName() {
-        return "product";
     }
 
     @Override
@@ -241,6 +237,22 @@ public class ProductServiceImpl implements ProductService {
                 .map(product -> toResponse(product, userId))
                 .toList();
         return new PageResponse<>(items, page, pageSize, result.getTotal());
+    }
+
+    @Override
+    public PageResponse<BrowseHistoryResponse> listBrowseHistory(long page, long pageSize) {
+        Long userId = CurrentUserContext.requireUserId();
+        long normalizedPage = Math.max(1, page);
+        long normalizedPageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, pageSize));
+        long offset = (normalizedPage - 1) * normalizedPageSize;
+        List<BrowseRecordEntity> records = browseRecordMapper.selectLatestByUser(userId, offset, normalizedPageSize);
+        List<BrowseHistoryResponse> items = records.stream()
+                .map(record -> toBrowseHistoryResponse(record, userId))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .toList();
+        long total = Optional.ofNullable(browseRecordMapper.countDistinctProductsByUser(userId)).orElse(0L);
+        return new PageResponse<>(items, normalizedPage, normalizedPageSize, total);
     }
 
     @Override
@@ -626,6 +638,17 @@ public class ProductServiceImpl implements ProductService {
             return "良好";
         }
         return "极差";
+    }
+
+    private Optional<BrowseHistoryResponse> toBrowseHistoryResponse(BrowseRecordEntity record, Long userId) {
+        ProductEntity product = productMapper.selectById(record.getProductId());
+        if (product == null || Boolean.TRUE.equals(product.getDeleted())) {
+            return Optional.empty();
+        }
+        BrowseHistoryResponse response = new BrowseHistoryResponse();
+        response.setProduct(toResponse(product, userId));
+        response.setViewedAt(record.getCreatedAt());
+        return Optional.of(response);
     }
 
     private Boolean isFavorited(Long userId, Long productId) {

@@ -6,7 +6,5 @@ import com.swapcampus.product.vo.ProductResponse;
 
 public interface SearchService {
 
-    String moduleName();
-
     PageResponse<ProductResponse> searchProducts(ProductSearchRequest request);
 }

@@ -20,6 +20,14 @@ function resolveWsUrl(token: string): string {
     const base = configured.replace(/\/$/, '')
     return `${base}/ws/chat?token=${encodeURIComponent(token)}`
   }
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL as string | undefined
+  if (apiBaseUrl?.startsWith('http')) {
+    const apiUrl = new URL(apiBaseUrl)
+    apiUrl.protocol = apiUrl.protocol === 'https:' ? 'wss:' : 'ws:'
+    apiUrl.pathname = '/ws/chat'
+    apiUrl.search = `token=${encodeURIComponent(token)}`
+    return apiUrl.toString()
+  }
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
   return `${protocol}://${window.location.host}/ws/chat?token=${encodeURIComponent(token)}`
 }
@@ -36,6 +44,9 @@ function ensureChatSocket() {
   }
   socket?.close()
   socket = new WebSocket(resolveWsUrl(auth.token))
+  socket.onopen = () => {
+    dispatchWsPayload({ type: 'SOCKET_OPEN' })
+  }
   socket.onmessage = (event) => {
     try {
       dispatchWsPayload(JSON.parse(event.data))
@@ -44,15 +55,22 @@ function ensureChatSocket() {
     }
   }
   socket.onclose = () => {
+    dispatchWsPayload({ type: 'SOCKET_CLOSE' })
     if (listeners.size > 0) {
       window.setTimeout(() => ensureChatSocket(), 3000)
     }
+  }
+  socket.onerror = () => {
+    dispatchWsPayload({ type: 'SOCKET_CLOSE' })
   }
 }
 
 export function subscribeChatSocket(onEvent: (payload: WsPayload) => void) {
   listeners.add(onEvent)
   ensureChatSocket()
+  if (socket?.readyState === WebSocket.OPEN) {
+    onEvent({ type: 'SOCKET_OPEN' })
+  }
   return () => {
     listeners.delete(onEvent)
     if (listeners.size === 0) {

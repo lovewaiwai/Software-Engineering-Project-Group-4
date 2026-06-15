@@ -7,15 +7,6 @@ public class AuthResponse {
     private String token;
     private String tokenType;
     private UserResponse user;
-    private String module;
-    private String status;
-
-    public static AuthResponse placeholder(String module) {
-        AuthResponse response = new AuthResponse();
-        response.setModule(module);
-        response.setStatus("TODO");
-        return response;
-    }
 
     public static AuthResponse login(String token, UserResponse user) {
         AuthResponse response = new AuthResponse();
@@ -49,19 +40,4 @@ public class AuthResponse {
         this.user = user;
     }
 
-    public String getModule() {
-        return module;
-    }
-
-    public void setModule(String module) {
-        this.module = module;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
 }

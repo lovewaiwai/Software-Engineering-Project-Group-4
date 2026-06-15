@@ -1,6 +1,7 @@
 package com.swapcampus.admin.service.impl;
 
 import com.swapcampus.admin.dto.ProductReviewRequest;
+import com.swapcampus.admin.dto.HandleReportRequest;
 import com.swapcampus.admin.vo.AdminUserSummaryResponse;
 import com.swapcampus.audit.mapper.AuditMapper;
 import com.swapcampus.audit.service.AuditLogService;
@@ -8,11 +9,13 @@ import com.swapcampus.order.mapper.OrderMapper;
 import com.swapcampus.chat.mapper.ChatMessageMapper;
 import com.swapcampus.chat.websocket.ChatWebSocketSessionRegistry;
 import com.swapcampus.common.enums.ProductStatus;
+import com.swapcampus.common.enums.ReportActionType;
+import com.swapcampus.common.enums.ReportStatus;
+import com.swapcampus.common.enums.ReportTargetType;
 import com.swapcampus.common.enums.Role;
 import com.swapcampus.common.enums.UserStatus;
 import com.swapcampus.common.exception.BusinessException;
 import com.swapcampus.common.exception.ErrorCode;
-import com.swapcampus.order.mapper.OrderMapper;
 import com.swapcampus.product.entity.CategoryEntity;
 import com.swapcampus.product.entity.ProductEntity;
 import com.swapcampus.product.entity.ProductImageEntity;
@@ -20,12 +23,15 @@ import com.swapcampus.product.mapper.CategoryMapper;
 import com.swapcampus.product.mapper.ProductImageMapper;
 import com.swapcampus.product.mapper.ProductMapper;
 import com.swapcampus.product.vo.ProductResponse;
+import com.swapcampus.report.entity.ReportActionEntity;
+import com.swapcampus.report.entity.ReportEntity;
 import com.swapcampus.report.mapper.ReportActionMapper;
 import com.swapcampus.report.mapper.ReportMapper;
 import com.swapcampus.user.entity.UserEntity;
 import com.swapcampus.user.entity.UserProfileEntity;
 import com.swapcampus.user.mapper.UserMapper;
 import com.swapcampus.user.mapper.UserProfileMapper;
+import com.swapcampus.user.service.UserAccountService;
 import com.swapcampus.user.service.UserModerationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -77,9 +83,7 @@ class AdminModerationServiceImplTest {
     @Mock
     private ProductImageMapper productImageMapper;
     @Mock
-    private OrderMapper orderMapper;
-    @Mock
-    private AuditMapper auditMapper;
+    private UserAccountService userAccountService;
 
     private AdminModerationServiceImpl adminService;
 
@@ -98,7 +102,8 @@ class AdminModerationServiceImplTest {
                 sessionRegistry,
                 auditLogService,
                 categoryMapper,
-                productImageMapper
+                productImageMapper,
+                userAccountService
         );
     }
 
@@ -200,6 +205,42 @@ class AdminModerationServiceImplTest {
         verify(auditLogService).record(eq(99L), eq("USER_BAN"), eq("USER"), eq(2L), anyString());
     }
 
+    @Test
+    void handleReportWarnDeductsReportedUserCredit() {
+        ReportEntity report = report(30L, ReportTargetType.USER, 2L, 2L);
+        HandleReportRequest request = new HandleReportRequest();
+        request.setActionType(ReportActionType.WARN);
+        request.setNote("valid report");
+        when(reportMapper.selectById(30L)).thenReturn(report);
+
+        assertEquals(ReportStatus.RESOLVED, adminService.handleReport(99L, 30L, request).getStatus());
+
+        verify(reportActionMapper).insert(any(ReportActionEntity.class));
+        verify(reportMapper).updateById(report);
+        verify(userAccountService).addCredit(2L, -5, "有效举报成立", "REPORT", 30L);
+        verify(auditLogService).record(eq(99L), eq("REPORT_ACTION"), eq("REPORT"), eq(30L), anyString());
+    }
+
+    @Test
+    void handleProductReportRemovesProductAndDeductsSellerCredit() {
+        ReportEntity report = report(31L, ReportTargetType.PRODUCT, 10L, 20L);
+        ProductEntity product = pendingProduct();
+        product.setStatus(ProductStatus.ACTIVE.name());
+        HandleReportRequest request = new HandleReportRequest();
+        request.setActionType(ReportActionType.REMOVE_PRODUCT);
+        request.setNote("violation");
+        when(reportMapper.selectById(31L)).thenReturn(report);
+        when(productMapper.selectById(10L)).thenReturn(product);
+
+        assertEquals(ReportStatus.RESOLVED, adminService.handleReport(99L, 31L, request).getStatus());
+
+        assertEquals(ProductStatus.OFFLINE.name(), product.getStatus());
+        assertEquals("举报成立：违规商品下架", product.getAuditReason());
+        verify(productMapper).updateById(product);
+        verify(reportMapper).updateById(report);
+        verify(userAccountService).addCredit(20L, -10, "违规商品下架", "REPORT", 31L);
+    }
+
     private ProductEntity pendingProduct() {
         ProductEntity product = new ProductEntity();
         product.setId(10L);
@@ -244,5 +285,18 @@ class AdminModerationServiceImplTest {
         user.setStatus(status);
         user.setCreditScore(60);
         return user;
+    }
+
+    private ReportEntity report(Long id, ReportTargetType targetType, Long targetId, Long reportedUserId) {
+        ReportEntity report = new ReportEntity();
+        report.setId(id);
+        report.setReporterId(1L);
+        report.setTargetType(targetType);
+        report.setTargetId(targetId);
+        report.setReportedUserId(reportedUserId);
+        report.setReason("bad behavior");
+        report.setStatus(ReportStatus.PENDING);
+        report.setCreatedAt(LocalDateTime.now().minusHours(1));
+        return report;
     }
 }

@@ -7,8 +7,6 @@ import java.util.List;
 
 public interface ReportService {
 
-    String moduleName();
-
     ReportResponse createReport(Long reporterId, CreateReportRequest request);
 
     List<ReportResponse> listMyReports(Long reporterId);

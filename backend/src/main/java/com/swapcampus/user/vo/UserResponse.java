@@ -19,15 +19,6 @@ public class UserResponse {
     private Integer pointBalance;
     private LocalDateTime createdAt;
     private Profile profile;
-    private String module;
-    private String moduleStatus;
-
-    public static UserResponse placeholder(String module) {
-        UserResponse response = new UserResponse();
-        response.setModule(module);
-        response.setModuleStatus("TODO");
-        return response;
-    }
 
     public static UserResponse from(UserEntity user, UserProfileEntity profile) {
         UserResponse response = new UserResponse();
@@ -124,22 +115,6 @@ public class UserResponse {
 
     public void setProfile(Profile profile) {
         this.profile = profile;
-    }
-
-    public String getModule() {
-        return module;
-    }
-
-    public void setModule(String module) {
-        this.module = module;
-    }
-
-    public String getModuleStatus() {
-        return moduleStatus;
-    }
-
-    public void setModuleStatus(String moduleStatus) {
-        this.moduleStatus = moduleStatus;
     }
 
     public static class Profile {

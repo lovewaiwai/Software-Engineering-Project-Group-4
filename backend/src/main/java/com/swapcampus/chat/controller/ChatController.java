@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/chat")
@@ -27,11 +26,6 @@ public class ChatController {
 
     public ChatController(ChatService chatService) {
         this.chatService = chatService;
-    }
-
-    @GetMapping("/health")
-    public ApiResponse<Map<String, String>> health() {
-        return ApiResponse.ok(Map.of("module", chatService.moduleName(), "status", "ok"));
     }
 
     @PostMapping("/sessions")

@@ -32,17 +32,6 @@ public class ProductResponse {
     private String recommendReason;
     private Integer sellerCreditScore;
     private String sellerCreditLevel;
-    private String module;
-
-    public static ProductResponse placeholder(String module) {
-        ProductResponse response = new ProductResponse();
-        response.setModule(module);
-        response.setStatus("TODO");
-        return response;
-    }
-
-    public String getModule() { return module; }
-    public void setModule(String module) { this.module = module; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }

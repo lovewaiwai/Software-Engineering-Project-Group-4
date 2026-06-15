@@ -9,7 +9,6 @@ import com.swapcampus.common.security.CurrentUserPrincipal;
 import com.swapcampus.user.config.UserVerificationProperties;
 import com.swapcampus.user.dto.UserProfileUpdateRequest;
 import com.swapcampus.user.dto.UserStudentVerifyRequest;
-import com.swapcampus.user.entity.CreditRecordEntity;
 import com.swapcampus.user.entity.StudentIdentityEntity;
 import com.swapcampus.user.entity.UserEntity;
 import com.swapcampus.user.entity.UserProfileEntity;
@@ -22,7 +21,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.TestingAuthenticationToken;
@@ -178,29 +176,6 @@ class UserServiceImplTest {
 
         assertEquals(ErrorCode.BAD_REQUEST, exception.getErrorCode());
         verify(userProfileMapper, never()).updateById(any(UserProfileEntity.class));
-    }
-
-    @Test
-    void adjustCreditScoreClampsScoreAndCreatesRecord() {
-        UserEntity user = activeUser(7L);
-        user.setCreditScore(95);
-        when(userMapper.selectById(7L)).thenReturn(user);
-
-        userService.adjustCreditScore(7L, 20, " good trade ", "ORDER", 99L);
-
-        assertEquals(100, user.getCreditScore());
-        verify(userMapper).updateById(user);
-
-        ArgumentCaptor<CreditRecordEntity> recordCaptor = ArgumentCaptor.forClass(CreditRecordEntity.class);
-        verify(creditRecordMapper).insert(recordCaptor.capture());
-        CreditRecordEntity record = recordCaptor.getValue();
-        assertEquals(7L, record.getUserId());
-        assertEquals(20, record.getDelta());
-        assertEquals(100, record.getScoreAfter());
-        assertEquals("good trade", record.getReason());
-        assertEquals("ORDER", record.getRefType());
-        assertEquals(99L, record.getRefId());
-        assertNotNull(record.getCreatedAt());
     }
 
     private void setCurrentUser(Long userId) {

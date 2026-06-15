@@ -44,7 +44,7 @@ public class MinioStorageService {
                 minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
                 log.info("Created MinIO bucket: {}", bucket);
             }
-            applyChatReadPolicy(bucket);
+            applyPublicReadPolicy(bucket);
         } catch (Exception ex) {
             log.warn("MinIO bucket initialization skipped: {}", ex.getMessage());
         }
@@ -84,8 +84,9 @@ public class MinioStorageService {
         return base + "/" + minioProperties.getBucket() + "/" + objectKey;
     }
 
-    private void applyChatReadPolicy(String bucket) throws Exception {
-        String prefix = minioProperties.getChatPrefix();
+    private void applyPublicReadPolicy(String bucket) throws Exception {
+        String chatPrefix = minioProperties.getChatPrefix();
+        String stickerPrefix = minioProperties.getStickerPrefix();
         String policy = """
                 {
                   "Version": "2012-10-17",
@@ -94,11 +95,14 @@ public class MinioStorageService {
                       "Effect": "Allow",
                       "Principal": {"AWS": ["*"]},
                       "Action": ["s3:GetObject"],
-                      "Resource": ["arn:aws:s3:::%s/%s/*"]
+                      "Resource": [
+                        "arn:aws:s3:::%s/%s/*",
+                        "arn:aws:s3:::%s/%s/*"
+                      ]
                     }
                   ]
                 }
-                """.formatted(bucket, prefix);
+                """.formatted(bucket, chatPrefix, bucket, stickerPrefix);
         minioClient.setBucketPolicy(
                 SetBucketPolicyArgs.builder().bucket(bucket).config(policy).build()
         );

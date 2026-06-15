@@ -35,11 +35,6 @@ public class AiServiceImpl implements AiService {
     }
 
     @Override
-    public String moduleName() {
-        return "ai";
-    }
-
-    @Override
     @Transactional
     public AiResponse suggestProduct(AiRequest request) {
         Long userId = CurrentUserContext.requireUserId();

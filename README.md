@@ -244,6 +244,16 @@ $env:JWT_SECRET="长度足够的本地开发密钥"
 $env:JWT_EXPIRATION_MINUTES="120"
 ```
 
+DeepSeek AI 建议默认关闭，未配置时会自动使用本地 Mock 规则，避免影响演示。需要启用真实 DeepSeek API 时，本机 PowerShell 设置：
+
+```powershell
+$env:DEEPSEEK_ENABLED="true"
+$env:DEEPSEEK_API_KEY="你的 DeepSeek API Key"
+$env:DEEPSEEK_MODEL="deepseek-v4-flash"
+```
+
+Docker Compose 可在本地 `.env` 中设置同名变量。请不要把真实 API Key 提交到 GitHub；仓库只保留环境变量占位，方便组员各自配置。
+
 后端检查：
 
 ```powershell
@@ -356,11 +366,12 @@ enums/
 
 ## Mock Adapter 定位
 
-当前支付、柜机和 AI 都使用 Mock Adapter，目的是保证演示闭环和后续可扩展性。
+当前支付、柜机使用 Mock Adapter；AI 已支持可选 DeepSeek Provider，未配置 `DEEPSEEK_ENABLED=true` 和 `DEEPSEEK_API_KEY` 时会自动回退 Mock，保证演示闭环和后续可扩展性。
 
 - `MockPaymentAdapter`：创建模拟支付单、支付链接、支付查询结果和退款结果。
 - `MockLockerAdapter`：模拟柜机预约、寄件确认、取件确认。
-- `MockAiSuggestAdapter`：根据简单规则返回商品分类、标签和价格区间建议。
+- `DeepSeekAiSuggestAdapter`：启用后根据商品标题和描述调用 DeepSeek，返回分类、标签和价格区间建议。
+- `MockAiSuggestAdapter`：DeepSeek 未配置或调用失败时的兜底规则。
 
 后续如果要接入真实服务，只需要新增对应实现类，例如真实支付、真实柜机或真实 AI Provider，并保持 Adapter 接口不变，避免影响商品和订单主流程。
 

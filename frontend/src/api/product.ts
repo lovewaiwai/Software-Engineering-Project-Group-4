@@ -41,6 +41,11 @@ export interface ProductItem {
   sellerCreditLevel?: string
 }
 
+export interface BrowseHistoryItem {
+  product: ProductItem
+  viewedAt?: string
+}
+
 export interface ProductSearchParams {
   keyword?: string
   categoryId?: number
@@ -103,6 +108,11 @@ export async function searchProducts(params: ProductSearchParams) {
 
 export async function listMyProducts(params: ProductSearchParams) {
   const { data } = await apiClient.get<ApiResponse<PageResponse<ProductItem>>>('/products/mine', { params })
+  return data
+}
+
+export async function listBrowseHistory(params: Pick<ProductSearchParams, 'page' | 'pageSize'>) {
+  const { data } = await apiClient.get<ApiResponse<PageResponse<BrowseHistoryItem>>>('/products/history', { params })
   return data
 }
 

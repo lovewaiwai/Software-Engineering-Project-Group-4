@@ -1,7 +1,32 @@
 :root {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #1f2937;
-  background: #f4f6f8;
+  color: #18251f;
+  background: #eef6ef;
+  --bfu-green-900: #073b2a;
+  --bfu-green-800: #0b5138;
+  --bfu-green-700: #0f6b47;
+  --bfu-green-600: #17824f;
+  --bfu-green-500: #22a35b;
+  --bfu-green-300: #8fd6aa;
+  --bfu-green-100: #dff4e5;
+  --bfu-mint-50: #f4fbf5;
+  --bfu-leaf-50: #eef8e9;
+  --bfu-wood: #9a6a32;
+  --bfu-soil: #5f4a32;
+  --bfu-price: #e95f2a;
+  --bfu-text: #18251f;
+  --bfu-muted: #6a7a70;
+  --bfu-border: #d8e7dc;
+  --bfu-shadow: 0 12px 28px rgba(7, 59, 42, 0.08);
+  --el-color-primary: var(--bfu-green-600);
+  --el-color-primary-light-3: #4daf77;
+  --el-color-primary-light-5: #8fd6aa;
+  --el-color-primary-light-7: #bfe8cc;
+  --el-color-primary-light-8: #d4f0dc;
+  --el-color-primary-light-9: #edf9f0;
+  --el-color-primary-dark-2: var(--bfu-green-800);
+  --el-color-success: var(--bfu-green-500);
+  --el-border-radius-base: 8px;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -14,6 +39,8 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(223, 244, 229, 0.85) 0%, rgba(244, 251, 245, 0.95) 32%, #f7faf7 100%);
 }
 
 #app {
@@ -25,7 +52,7 @@ body {
 }
 
 .app-sidebar {
-  border-right: 1px solid #dde3ea;
+  border-right: 1px solid var(--bfu-border);
   background: #ffffff;
 }
 
@@ -36,7 +63,7 @@ body {
   padding: 0 20px;
   font-size: 20px;
   font-weight: 700;
-  color: #0f766e;
+  color: var(--bfu-green-800);
 }
 
 .nav-menu {
@@ -48,7 +75,7 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  border-bottom: 1px solid #dde3ea;
+  border-bottom: 1px solid var(--bfu-border);
   background: #ffffff;
 }
 
@@ -82,7 +109,7 @@ body {
 
 .eyebrow {
   margin: 0;
-  color: #0f766e;
+  color: var(--bfu-green-700);
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
@@ -90,7 +117,7 @@ body {
 
 .todo-table {
   margin-top: 16px;
-  border: 1px solid #dde3ea;
+  border: 1px solid var(--bfu-border);
 }
 
 .auth-page {
@@ -99,17 +126,59 @@ body {
   place-items: center;
   padding: 24px;
   background:
-    linear-gradient(135deg, rgba(15, 118, 110, 0.12), rgba(37, 99, 235, 0.08)),
-    #f4f6f8;
+    linear-gradient(135deg, rgba(23, 130, 79, 0.14), rgba(154, 106, 50, 0.08)),
+    var(--bfu-mint-50);
 }
 
 .auth-panel {
   width: min(100%, 420px);
   padding: 28px;
-  border: 1px solid #dde3ea;
+  border: 1px solid var(--bfu-border);
   border-radius: 8px;
   background: #ffffff;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--bfu-shadow);
+}
+
+a {
+  color: var(--bfu-green-700);
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--bfu-green-600);
+  --el-button-border-color: var(--bfu-green-600);
+  --el-button-hover-bg-color: var(--bfu-green-700);
+  --el-button-hover-border-color: var(--bfu-green-700);
+  --el-button-active-bg-color: var(--bfu-green-800);
+  --el-button-active-border-color: var(--bfu-green-800);
+}
+
+.el-button--danger {
+  --el-button-bg-color: #e95f2a;
+  --el-button-border-color: #e95f2a;
+  --el-button-hover-bg-color: #d94f1f;
+  --el-button-hover-border-color: #d94f1f;
+}
+
+.el-menu-item.is-active {
+  color: var(--bfu-green-700);
+  background: var(--bfu-green-100);
+}
+
+.el-menu-item:hover {
+  color: var(--bfu-green-700);
+  background: var(--bfu-mint-50);
+}
+
+.el-tag.el-tag--success {
+  --el-tag-bg-color: var(--bfu-green-100);
+  --el-tag-border-color: #bfe8cc;
+  --el-tag-text-color: var(--bfu-green-800);
+}
+
+.el-input__wrapper.is-focus,
+.el-select__wrapper.is-focused,
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--bfu-green-600) inset;
 }
 
 .full-width {

@@ -1,50 +1,66 @@
 <template>
   <section class="home-page">
-    <div class="home-head">
-      <div>
-        <h1>校园闲置精选</h1>
-        <p>浏览最新上架和个性化推荐的二手教材、数码和生活用品。</p>
+    <header class="market-hero">
+      <div class="hero-copy">
+        <p class="eyebrow">北京林业大学校园闲置</p>
+        <h1>让用过的好东西，在北林继续发光</h1>
+        <p>找教材、数码、生活小物和代步装备，优先看同校区、可面交、可信用的校园闲置。</p>
       </div>
-      <div class="head-actions">
-        <el-button :icon="Search" @click="$router.push('/products')">去搜索</el-button>
-        <el-button type="primary" :icon="Plus" @click="$router.push('/products/new')">发布商品</el-button>
+      <div class="hero-search">
+        <el-input
+          v-model="searchKeyword"
+          size="large"
+          clearable
+          placeholder="搜教材、耳机、自行车、考研资料..."
+          :prefix-icon="Search"
+          @keyup.enter="submitSearch"
+        />
+        <el-button type="primary" size="large" :icon="Search" @click="submitSearch">搜索</el-button>
+        <el-button size="large" :icon="Plus" @click="$router.push('/products/new')">发布闲置</el-button>
       </div>
-    </div>
+    </header>
 
-    <div class="category-strip">
-      <button v-for="category in flatCategories" :key="category.id" type="button" @click="openCategory(category.id)">
+    <nav class="category-strip" aria-label="商品分类">
+      <button type="button" class="category-pill all" @click="$router.push('/products')">全部闲置</button>
+      <button v-for="category in flatCategories" :key="category.id" type="button" class="category-pill" @click="openCategory(category.id)">
         {{ category.name }}
       </button>
-    </div>
+    </nav>
 
-    <div class="section-head">
-      <h2>推荐商品</h2>
-      <el-button text :icon="Refresh" :loading="loading" @click="loadData">刷新</el-button>
-    </div>
-
-    <el-skeleton v-if="loading" :rows="6" animated />
-    <el-empty v-else-if="recommendations.length === 0" description="暂无推荐商品" />
-
-    <div v-else class="feed-grid">
-      <article v-for="product in recommendations" :key="product.id" class="feed-card" @click="openProduct(product.id)">
-        <div class="cover">
-          <img v-if="product.imageUrls?.[0]" :src="resolveMediaUrl(product.imageUrls[0])" :alt="product.title" />
-          <el-icon v-else><Picture /></el-icon>
+    <section class="feed-section">
+      <div class="section-head">
+        <div>
+          <h2>北林同学正在出</h2>
+          <p>按你的浏览和最新上架综合推荐，先聊再买更安心。</p>
         </div>
-        <div class="feed-body">
-          <div class="title-row">
+        <el-button text :icon="Refresh" :loading="loading" @click="loadData">刷新</el-button>
+      </div>
+
+      <el-skeleton v-if="loading" :rows="6" animated />
+      <el-empty v-else-if="recommendations.length === 0" description="暂无推荐商品" />
+
+      <div v-else class="waterfall-grid">
+        <article v-for="product in recommendations" :key="product.id" class="product-tile" @click="openProduct(product.id)">
+          <div class="tile-cover">
+            <img v-if="coverOf(product)" :src="coverOf(product)" :alt="product.title" />
+            <el-icon v-else><Picture /></el-icon>
+          </div>
+          <div class="tile-body">
             <h3>{{ product.title }}</h3>
-            <strong>¥{{ money(product.price) }}</strong>
+            <p>{{ product.description || '卖家暂未填写描述' }}</p>
+            <div class="price-line">
+              <strong>¥{{ money(product.price) }}</strong>
+              <span>{{ product.campus || '校内' }}</span>
+            </div>
+            <div class="meta-line">
+              <span>{{ product.categoryName || '闲置' }}</span>
+              <span v-if="product.sellerCreditLevel">信用{{ product.sellerCreditLevel }}</span>
+              <span>{{ product.recommendReason || '最新上架' }}</span>
+            </div>
           </div>
-          <p>{{ product.description || '卖家暂未填写描述' }}</p>
-          <div class="meta-row">
-            <el-tag size="small">{{ product.categoryName || '未分类' }}</el-tag>
-            <el-tag v-if="product.sellerCreditLevel" size="small" type="success">信用{{ product.sellerCreditLevel }}</el-tag>
-            <span>{{ product.recommendReason || '最新上架商品' }}</span>
-          </div>
-        </div>
-      </article>
-    </div>
+        </article>
+      </div>
+    </section>
   </section>
 </template>
 
@@ -59,16 +75,17 @@ import { resolveMediaUrl } from '../../utils/media'
 
 const router = useRouter()
 const loading = ref(false)
+const searchKeyword = ref('')
 const recommendations = ref<ProductItem[]>([])
 const categories = ref<CategoryItem[]>([])
-const flatCategories = computed(() => flattenCategories(categories.value))
+const flatCategories = computed(() => flattenCategories(categories.value).slice(0, 12))
 
 onMounted(loadData)
 
 async function loadData() {
   loading.value = true
   try {
-    const [categoryResponse, recommendResponse] = await Promise.all([listCategories(), listRecommendations(12)])
+    const [categoryResponse, recommendResponse] = await Promise.all([listCategories(), listRecommendations(16)])
     if (categoryResponse.code === 0) categories.value = categoryResponse.data
     if (recommendResponse.code === 0) recommendations.value = recommendResponse.data
   } catch (error) {
@@ -76,6 +93,10 @@ async function loadData() {
   } finally {
     loading.value = false
   }
+}
+
+function submitSearch() {
+  router.push({ path: '/products', query: searchKeyword.value.trim() ? { keyword: searchKeyword.value.trim() } : {} })
 }
 
 async function openProduct(id: number) {
@@ -102,6 +123,10 @@ function flattenCategories(items: CategoryItem[]): CategoryItem[] {
     })
 }
 
+function coverOf(product: ProductItem) {
+  return resolveMediaUrl(product.imageUrls?.[0])
+}
+
 function money(value?: number) {
   return Number(value ?? 0).toFixed(2)
 }
@@ -113,113 +138,169 @@ function money(value?: number) {
   flex-direction: column;
   gap: 18px;
 }
-.home-head,
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+.market-hero {
+  min-height: 260px;
+  display: grid;
+  align-items: end;
+  gap: 24px;
+  padding: 32px;
+  border: 1px solid var(--bfu-border);
+  border-radius: 8px;
+  background:
+    linear-gradient(120deg, rgba(7, 59, 42, 0.88), rgba(15, 107, 71, 0.76)),
+    url("https://images.unsplash.com/photo-1473773508845-188df298d2d1?auto=format&fit=crop&w=1600&q=80") center/cover;
+  color: #fff;
+  box-shadow: var(--bfu-shadow);
 }
-.home-head h1,
-.section-head h2 {
+.hero-copy {
+  max-width: 720px;
+}
+.hero-copy .eyebrow {
+  color: #c8f2d4;
+}
+.hero-copy h1 {
+  margin: 8px 0 10px;
+  font-size: clamp(30px, 5vw, 52px);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+.hero-copy p {
   margin: 0;
+  color: rgba(255, 255, 255, 0.86);
+  line-height: 1.7;
 }
-.home-head h1 {
-  font-size: 28px;
-}
-.home-head p {
-  margin: 6px 0 0;
-  color: #64748b;
-}
-.head-actions {
-  display: flex;
+.hero-search {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
   gap: 10px;
+  max-width: 860px;
+}
+.hero-search :deep(.el-input__wrapper) {
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.38) inset, 0 8px 22px rgba(7, 59, 42, 0.18);
 }
 .category-strip {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
-.category-strip button {
-  border: 1px solid #dbe4ee;
+.category-pill {
+  border: 1px solid var(--bfu-border);
   background: #fff;
   border-radius: 8px;
-  padding: 8px 12px;
-  color: #334155;
+  padding: 9px 14px;
+  color: var(--bfu-green-800);
   cursor: pointer;
   white-space: nowrap;
+  font-weight: 700;
 }
-.category-strip button:hover {
-  border-color: #409eff;
-  color: #409eff;
+.category-pill.all,
+.category-pill:hover {
+  border-color: var(--bfu-green-600);
+  background: var(--bfu-green-100);
 }
-.feed-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+.feed-section {
+  display: flex;
+  flex-direction: column;
   gap: 14px;
 }
-.feed-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  overflow: hidden;
-  cursor: pointer;
-}
-.feed-card:hover {
-  border-color: #409eff;
-}
-.cover {
-  height: 160px;
-  background: #f1f5f9;
+.section-head {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+.section-head h2 {
+  margin: 0;
+  font-size: 24px;
+}
+.section-head p {
+  margin: 4px 0 0;
+  color: var(--bfu-muted);
+}
+.waterfall-grid {
+  columns: 4 220px;
+  column-gap: 14px;
+}
+.product-tile {
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 14px;
+  overflow: hidden;
+  border: 1px solid var(--bfu-border);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(7, 59, 42, 0.05);
+  break-inside: avoid;
+}
+.product-tile:hover {
+  border-color: var(--bfu-green-500);
+  transform: translateY(-2px);
+}
+.tile-cover {
+  min-height: 170px;
+  display: grid;
+  place-items: center;
+  background: var(--bfu-leaf-50);
+  color: var(--bfu-green-300);
   font-size: 34px;
 }
-.cover img {
+.tile-cover img {
   width: 100%;
-  height: 100%;
+  height: auto;
+  min-height: 170px;
+  max-height: 310px;
   object-fit: cover;
+  display: block;
 }
-.feed-body {
+.tile-body {
   padding: 12px;
 }
-.title-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-}
-.title-row h3 {
+.tile-body h3 {
   margin: 0;
   font-size: 16px;
+  line-height: 1.35;
 }
-.title-row strong {
-  color: #ef4444;
-}
-.feed-body p {
-  min-height: 42px;
-  margin: 8px 0;
-  color: #64748b;
-  line-height: 1.5;
+.tile-body p {
+  margin: 7px 0 10px;
+  color: var(--bfu-muted);
+  line-height: 1.45;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.meta-row {
+.price-line,
+.meta-line {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
-.meta-row span {
-  color: #64748b;
+.price-line strong {
+  color: var(--bfu-price);
+  font-size: 20px;
+}
+.price-line span,
+.meta-line span {
+  color: var(--bfu-muted);
   font-size: 12px;
 }
-@media (max-width: 700px) {
-  .home-head {
+.meta-line {
+  margin-top: 6px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+@media (max-width: 760px) {
+  .market-hero {
+    padding: 22px;
+  }
+  .hero-search {
+    grid-template-columns: 1fr;
+  }
+  .section-head {
     align-items: flex-start;
     flex-direction: column;
   }

@@ -6,6 +6,7 @@ import com.swapcampus.product.dto.ProductImageRequest;
 import com.swapcampus.product.dto.ProductRequest;
 import com.swapcampus.product.dto.ProductSearchRequest;
 import com.swapcampus.product.service.ProductService;
+import com.swapcampus.product.vo.BrowseHistoryResponse;
 import com.swapcampus.product.vo.CategoryResponse;
 import com.swapcampus.product.vo.ProductResponse;
 import com.swapcampus.product.vo.TagResponse;
@@ -30,11 +31,6 @@ public class ProductController {
 
     public ProductController(ProductService productService) {
         this.productService = productService;
-    }
-
-    @GetMapping({"/products/health", "/product/health"})
-    public ApiResponse<ProductResponse> health() {
-        return ApiResponse.ok(ProductResponse.placeholder(productService.moduleName()));
     }
 
     @GetMapping("/categories")
@@ -75,6 +71,11 @@ public class ProductController {
     @GetMapping("/products/mine")
     public ApiResponse<PageResponse<ProductResponse>> mine(@ModelAttribute ProductSearchRequest request) {
         return ApiResponse.ok(productService.listMine(request));
+    }
+
+    @GetMapping("/products/history")
+    public ApiResponse<PageResponse<BrowseHistoryResponse>> history(@ModelAttribute ProductSearchRequest request) {
+        return ApiResponse.ok(productService.listBrowseHistory(request.getPage(), request.getPageSize()));
     }
 
     @GetMapping("/products/{id}")

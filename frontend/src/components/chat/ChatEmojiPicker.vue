@@ -103,6 +103,7 @@ watch(activeTab, () => {
   left: 0;
   right: 0;
   bottom: calc(100% + 8px);
+  box-sizing: border-box;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
@@ -133,13 +134,15 @@ watch(activeTab, () => {
 }
 .picker-body {
   padding: 10px;
+  max-height: min(320px, 48vh);
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .category-tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 8px;
-  overflow-x: auto;
-  padding-bottom: 2px;
 }
 .category-btn {
   width: 32px;
@@ -156,10 +159,8 @@ watch(activeTab, () => {
 }
 .emoji-grid {
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
+  grid-template-columns: repeat(8, minmax(0, 1fr));
   gap: 2px;
-  max-height: 220px;
-  overflow-y: auto;
 }
 .emoji-item {
   width: 100%;
@@ -177,16 +178,15 @@ watch(activeTab, () => {
 }
 .sticker-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
-  max-height: 240px;
-  overflow-y: auto;
 }
 .sticker-item {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  min-width: 0;
   padding: 8px 4px;
   border: 1px solid #eef2f7;
   border-radius: 12px;
@@ -205,8 +205,12 @@ watch(activeTab, () => {
   object-fit: contain;
 }
 .sticker-item span {
+  max-width: 100%;
   font-size: 11px;
   color: #64748b;
   line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

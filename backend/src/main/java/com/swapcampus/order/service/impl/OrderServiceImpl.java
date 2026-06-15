@@ -13,8 +13,11 @@ import com.swapcampus.order.vo.OrderResponse;
 import com.swapcampus.payment.entity.PaymentEntity;
 import com.swapcampus.payment.enums.PaymentStatus;
 import com.swapcampus.payment.mapper.PaymentMapper;
+import com.swapcampus.product.entity.ProductImageEntity;
 import com.swapcampus.product.entity.ProductEntity;
+import com.swapcampus.product.mapper.ProductImageMapper;
 import com.swapcampus.product.mapper.ProductMapper;
+import com.swapcampus.user.service.UserAccountService;
 import com.swapcampus.user.service.UserVerificationGuard;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,20 +36,23 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderMapper orderMapper;
     private final ProductMapper productMapper;
+    private final ProductImageMapper productImageMapper;
     private final PaymentMapper paymentMapper;
     private final UserVerificationGuard userVerificationGuard;
-    private final com.swapcampus.user.service.UserService userService;
+    private final UserAccountService userAccountService;
 
     public OrderServiceImpl(OrderMapper orderMapper,
                             ProductMapper productMapper,
+                            ProductImageMapper productImageMapper,
                             PaymentMapper paymentMapper,
                             UserVerificationGuard userVerificationGuard,
-                            com.swapcampus.user.service.UserService userService) {
+                            UserAccountService userAccountService) {
         this.orderMapper = orderMapper;
         this.productMapper = productMapper;
+        this.productImageMapper = productImageMapper;
         this.paymentMapper = paymentMapper;
         this.userVerificationGuard = userVerificationGuard;
-        this.userService = userService;
+        this.userAccountService = userAccountService;
     }
 
     @Override
@@ -82,14 +88,14 @@ public class OrderServiceImpl implements OrderService {
         product.setUpdatedAt(LocalDateTime.now());
         productMapper.updateById(product);
 
-        return OrderResponse.from(order);
+        return toResponse(order);
     }
 
     @Override
     public OrderResponse getOrder(Long orderId, Long currentUserId) {
         OrderEntity order = requireOrder(orderId);
         requireParticipant(order, currentUserId);
-        return OrderResponse.from(order);
+        return toResponse(order);
     }
 
     @Override
@@ -105,7 +111,7 @@ public class OrderServiceImpl implements OrderService {
         wrapper.orderByDesc(OrderEntity::getCreatedAt);
         return orderMapper.selectList(wrapper)
                 .stream()
-                .map(OrderResponse::from)
+                .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
@@ -123,7 +129,7 @@ public class OrderServiceImpl implements OrderService {
         order.setUpdatedAt(LocalDateTime.now());
         orderMapper.updateById(order);
         restoreProductIfLocked(order.getProductId());
-        return OrderResponse.from(order);
+        return toResponse(order);
     }
 
     @Override
@@ -139,7 +145,7 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(OrderStatus.SELLER_CONFIRMED.name());
         order.setUpdatedAt(LocalDateTime.now());
         orderMapper.updateById(order);
-        return OrderResponse.from(order);
+        return toResponse(order);
     }
 
     @Override
@@ -168,7 +174,8 @@ public class OrderServiceImpl implements OrderService {
         orderMapper.updateById(order);
 
         restoreProductIfLocked(order.getProductId());
-        return OrderResponse.from(order);
+        userAccountService.addCredit(order.getSellerId(), -3, "卖家拒单/爽约", "ORDER", orderId);
+        return toResponse(order);
     }
 
     @Override
@@ -190,15 +197,30 @@ public class OrderServiceImpl implements OrderService {
         orderMapper.updateById(order);
         markProductSold(order.getProductId());
 
-        // 订单完成，卖家信用分 +1
-        userService.adjustCreditScore(
-                order.getSellerId(), 1, "完成交易", "order", orderId
-        );
+        userAccountService.addCredit(order.getSellerId(), 2, "完成交易", "ORDER", orderId);
 
-        return OrderResponse.from(order);
+        return toResponse(order);
     }
 
     // ---- 私有方法 ----
+
+    private OrderResponse toResponse(OrderEntity order) {
+        OrderResponse response = OrderResponse.from(order);
+        ProductEntity product = productMapper.selectById(order.getProductId());
+        if (product != null) {
+            response.setProductTitle(product.getTitle());
+            response.setProductStatus(product.getStatus());
+        }
+        ProductImageEntity cover = productImageMapper.selectOne(new LambdaQueryWrapper<ProductImageEntity>()
+                .eq(ProductImageEntity::getProductId, order.getProductId())
+                .orderByAsc(ProductImageEntity::getSortOrder)
+                .orderByAsc(ProductImageEntity::getId)
+                .last("OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY"));
+        if (cover != null) {
+            response.setProductImageUrl(cover.getUrl());
+        }
+        return response;
+    }
 
     private ProductEntity requireProduct(Long productId) {
         ProductEntity product = productMapper.selectById(productId);

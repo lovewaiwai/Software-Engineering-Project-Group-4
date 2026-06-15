@@ -1,64 +1,62 @@
 <template>
   <section class="product-list-page">
-    <div class="page-head">
+    <header class="market-toolbar">
       <div>
-        <h1>商品浏览</h1>
-        <p>按分类、价格、成色和交易方式筛选校园闲置商品。</p>
+        <p class="eyebrow">校园闲置广场</p>
+        <h1>找一件刚好需要的北林闲置</h1>
       </div>
-      <el-button type="primary" :icon="Plus" @click="$router.push('/products/new')">发布商品</el-button>
-    </div>
+      <el-button type="primary" :icon="Plus" @click="$router.push('/products/new')">发布闲置</el-button>
+    </header>
+
+    <section class="search-band">
+      <el-input
+        v-model="filters.keyword"
+        size="large"
+        clearable
+        placeholder="搜商品、课程、宿舍用品..."
+        :prefix-icon="Search"
+        @keyup.enter="reload"
+        @clear="reload"
+      />
+      <el-select v-model="filters.categoryId" size="large" placeholder="分类" clearable @change="reload">
+        <el-option v-for="category in flatCategories" :key="category.id" :label="category.name" :value="category.id" />
+      </el-select>
+      <el-select v-model="filters.sort" size="large" placeholder="排序" @change="reload">
+        <el-option label="最新发布" value="newest" />
+        <el-option label="价格从低到高" value="price_asc" />
+        <el-option label="价格从高到低" value="price_desc" />
+        <el-option label="热度优先" value="hot" />
+      </el-select>
+      <el-button type="primary" size="large" :icon="Search" @click="reload">搜索</el-button>
+    </section>
 
     <div class="content-grid">
       <aside class="filters">
-        <el-input
-          v-model="filters.keyword"
-          placeholder="搜索标题或描述"
-          clearable
-          :prefix-icon="Search"
-          @keyup.enter="reload"
-          @clear="reload"
-        />
-
-        <el-select v-model="filters.categoryId" placeholder="分类" clearable @change="reload">
-          <el-option v-for="category in flatCategories" :key="category.id" :label="category.name" :value="category.id" />
-        </el-select>
-
+        <h2>筛选</h2>
         <div class="range-row">
           <el-input-number v-model="filters.minPrice" :min="0" :precision="0" placeholder="最低价" controls-position="right" />
           <el-input-number v-model="filters.maxPrice" :min="0" :precision="0" placeholder="最高价" controls-position="right" />
         </div>
-
         <el-select v-model="filters.conditionLevel" placeholder="成色" clearable @change="reload">
           <el-option label="全新" value="NEW" />
           <el-option label="九成新" value="LIKE_NEW" />
           <el-option label="良好" value="GOOD" />
           <el-option label="普通" value="NORMAL" />
         </el-select>
-
-        <el-input v-model="filters.campus" placeholder="校区" clearable @keyup.enter="reload" @clear="reload" />
-
+        <el-input v-model="filters.campus" placeholder="校区/地点" clearable @keyup.enter="reload" @clear="reload" />
         <el-segmented v-model="filters.tradeMode" :options="tradeModeOptions" @change="reload" />
-
-        <el-select v-model="filters.sort" placeholder="排序" @change="reload">
-          <el-option label="最新发布" value="newest" />
-          <el-option label="价格从低到高" value="price_asc" />
-          <el-option label="价格从高到低" value="price_desc" />
-          <el-option label="热度优先" value="hot" />
-        </el-select>
-
         <div class="filter-actions">
           <el-button type="primary" :icon="Search" @click="reload">筛选</el-button>
           <el-button :icon="Refresh" @click="resetFilters">重置</el-button>
         </div>
-
         <div class="tag-box">
-          <span v-for="tag in tags" :key="tag.id">#{{ tag.name }}</span>
+          <button v-for="tag in tags.slice(0, 16)" :key="tag.id" type="button" @click="filters.keyword = tag.name; reload()">#{{ tag.name }}</button>
         </div>
       </aside>
 
       <main class="results">
         <div class="result-bar">
-          <span>共 {{ page.total }} 件商品</span>
+          <span>共 {{ page.total }} 件闲置</span>
           <el-button text :icon="Refresh" :loading="loading" @click="loadProducts">刷新</el-button>
         </div>
 
@@ -69,23 +67,19 @@
             <div class="thumb">
               <img v-if="coverOf(product)" :src="coverOf(product)" :alt="product.title" />
               <el-icon v-else><Picture /></el-icon>
+              <span class="condition-chip">{{ conditionLabel(product.conditionLevel) }}</span>
             </div>
             <div class="card-body">
-              <div class="title-row">
-                <h2>{{ product.title }}</h2>
-                <el-tag size="small">{{ product.categoryName || '未分类' }}</el-tag>
-              </div>
-              <div class="badge-row">
-                <el-tag v-if="product.sellerCreditLevel" size="small" type="success">
-                  信用{{ product.sellerCreditLevel }}
-                </el-tag>
-                <el-tag v-for="tag in product.tagNames || []" :key="tag" size="small" effect="plain">{{ tag }}</el-tag>
-              </div>
+              <h2>{{ product.title }}</h2>
               <p class="desc">{{ product.description || '卖家暂未填写描述' }}</p>
-              <div class="meta-row">
+              <div class="price-row">
                 <strong>¥{{ money(product.price) }}</strong>
                 <span>{{ product.campus || '校内' }}</span>
-                <span>{{ conditionLabel(product.conditionLevel) }}</span>
+              </div>
+              <div class="badge-row">
+                <span>{{ product.categoryName || '未分类' }}</span>
+                <span v-if="product.sellerCreditLevel">信用{{ product.sellerCreditLevel }}</span>
+                <span v-for="tag in product.tagNames || []" :key="tag">#{{ tag }}</span>
               </div>
               <div class="stat-row">
                 <span><el-icon><View /></el-icon>{{ product.viewCount ?? 0 }}</span>
@@ -107,12 +101,15 @@
       </main>
 
       <aside class="recommend">
-        <h2>推荐</h2>
+        <h2>可能喜欢</h2>
         <el-skeleton v-if="recommendLoading" :rows="5" animated />
         <div v-else class="recommend-list">
           <button v-for="item in recommendations" :key="item.id" type="button" @click="openProduct(item.id)">
-            <span>{{ item.title }}</span>
-            <small>{{ item.recommendReason || '最新上架商品' }}</small>
+            <img v-if="coverOf(item)" :src="coverOf(item)" :alt="item.title" />
+            <span>
+              <strong>{{ item.title }}</strong>
+              <small>{{ item.recommendReason || '最新上架' }}</small>
+            </span>
           </button>
         </div>
       </aside>
@@ -287,34 +284,41 @@ function tradeModeText(values?: string[]) {
 .product-list-page {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
-.page-head {
+.market-toolbar,
+.search-band,
+.filters,
+.recommend,
+.results {
+  border: 1px solid var(--bfu-border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(7, 59, 42, 0.04);
+}
+.market-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  padding: 20px;
 }
-.page-head h1 {
-  margin: 0;
-  font-size: 26px;
+.market-toolbar h1 {
+  margin: 4px 0 0;
+  font-size: 28px;
+  letter-spacing: 0;
 }
-.page-head p {
-  margin: 6px 0 0;
-  color: #64748b;
+.search-band {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 180px 180px auto;
+  gap: 10px;
+  padding: 14px;
 }
 .content-grid {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr) 260px;
+  grid-template-columns: 240px minmax(0, 1fr) 260px;
   gap: 16px;
   align-items: start;
-}
-.filters,
-.recommend,
-.results {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
 }
 .filters,
 .recommend {
@@ -324,6 +328,11 @@ function tradeModeText(values?: string[]) {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+.filters h2,
+.recommend h2 {
+  margin: 0 0 2px;
+  font-size: 17px;
 }
 .range-row {
   display: grid;
@@ -345,103 +354,120 @@ function tradeModeText(values?: string[]) {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  color: #64748b;
+}
+.tag-box button {
+  border: 1px solid transparent;
+  background: var(--bfu-green-100);
+  color: var(--bfu-green-800);
+  border-radius: 8px;
+  padding: 5px 8px;
+  cursor: pointer;
   font-size: 12px;
 }
 .results {
   min-width: 0;
   padding: 14px;
 }
-.result-bar,
-.meta-row,
-.stat-row {
+.result-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-}
-.result-bar {
   margin-bottom: 12px;
-  color: #475569;
+  color: var(--bfu-muted);
 }
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
   gap: 12px;
 }
 .product-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
   overflow: hidden;
-  cursor: pointer;
+  border: 1px solid var(--bfu-border);
+  border-radius: 8px;
   background: #fff;
+  cursor: pointer;
 }
 .product-card:hover {
-  border-color: #409eff;
+  border-color: var(--bfu-green-500);
+  box-shadow: 0 8px 20px rgba(7, 59, 42, 0.08);
 }
 .thumb {
-  height: 150px;
-  background: #f1f5f9;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #94a3b8;
+  position: relative;
+  aspect-ratio: 1 / 0.78;
+  display: grid;
+  place-items: center;
+  background: var(--bfu-leaf-50);
+  color: var(--bfu-green-300);
   font-size: 32px;
+  overflow: hidden;
 }
 .thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
+.condition-chip {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(7, 59, 42, 0.78);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
 .card-body {
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  padding: 11px;
 }
-.title-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-}
-.title-row h2 {
+.card-body h2 {
   margin: 0;
   font-size: 16px;
   line-height: 1.35;
 }
 .desc {
   min-height: 40px;
-  margin: 0;
-  color: #64748b;
-  line-height: 1.5;
+  margin: 7px 0;
+  color: var(--bfu-muted);
+  line-height: 1.45;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.price-row,
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.price-row strong {
+  color: var(--bfu-price);
+  font-size: 20px;
+}
+.price-row span,
+.stat-row span,
+.badge-row span {
+  color: var(--bfu-muted);
+  font-size: 12px;
+}
 .badge-row {
+  min-height: 24px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  min-height: 24px;
+  margin: 8px 0;
 }
-.meta-row strong {
-  color: #ef4444;
-  font-size: 18px;
-}
-.meta-row span,
-.stat-row span {
-  color: #64748b;
-  font-size: 12px;
+.badge-row span {
+  padding: 3px 7px;
+  border-radius: 8px;
+  background: var(--bfu-mint-50);
 }
 .stat-row span {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-.recommend h2 {
-  margin: 0 0 12px;
-  font-size: 18px;
 }
 .recommend-list {
   display: flex;
@@ -449,39 +475,59 @@ function tradeModeText(values?: string[]) {
   gap: 8px;
 }
 .recommend-list button {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 8px;
+  align-items: center;
   text-align: left;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--bfu-border);
   background: #fff;
   border-radius: 8px;
-  padding: 10px;
+  padding: 8px;
   cursor: pointer;
 }
 .recommend-list button:hover {
-  border-color: #409eff;
+  border-color: var(--bfu-green-500);
 }
-.recommend-list span,
+.recommend-list img {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bfu-leaf-50);
+}
+.recommend-list strong,
 .recommend-list small {
   display: block;
 }
+.recommend-list strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .recommend-list small {
   margin-top: 4px;
-  color: #64748b;
+  color: var(--bfu-muted);
 }
-@media (max-width: 1100px) {
+@media (max-width: 1120px) {
   .content-grid {
-    grid-template-columns: 240px 1fr;
+    grid-template-columns: 220px 1fr;
   }
   .recommend {
     display: none;
   }
 }
-@media (max-width: 760px) {
-  .content-grid {
+@media (max-width: 820px) {
+  .market-toolbar,
+  .search-band {
     grid-template-columns: 1fr;
   }
-  .page-head {
+  .market-toolbar {
     align-items: flex-start;
     flex-direction: column;
+  }
+  .content-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

@@ -1,48 +1,51 @@
 <template>
-  <div class="order-list">
-    <div class="page-header">
-      <h2>我的订单</h2>
+  <section class="order-list">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">交易中心</p>
+        <h1>我的订单</h1>
+      </div>
       <el-radio-group v-model="role" @change="loadOrders">
         <el-radio-button value="buyer">我买的</el-radio-button>
         <el-radio-button value="seller">我卖的</el-radio-button>
       </el-radio-group>
-    </div>
+    </header>
 
     <el-skeleton v-if="loading" :rows="4" animated />
-
     <el-empty v-else-if="orders.length === 0" description="暂无订单" />
 
     <div v-else class="order-cards">
-      <el-card
-          v-for="order in orders"
-          :key="order.id"
-          class="order-card"
-          shadow="hover"
-          @click="$router.push(`/orders/${order.id}`)"
-      >
-        <div class="order-card-inner">
-          <div class="order-info">
-            <div class="order-no">订单号：{{ order.orderNo }}</div>
-            <div class="order-meta">
-              <span>金额：¥{{ order.amount }}</span>
-              <span>交易方式：{{ tradeModeLabel(order.tradeMode) }}</span>
-              <span>下单时间：{{ formatDate(order.createdAt) }}</span>
-            </div>
-          </div>
-          <div class="order-right">
+      <article v-for="order in orders" :key="order.id" class="order-card" @click="$router.push(`/orders/${order.id}`)">
+        <div class="product-thumb">
+          <img v-if="order.productImageUrl" :src="resolveMediaUrl(order.productImageUrl)" :alt="order.productTitle" />
+          <el-icon v-else><Picture /></el-icon>
+        </div>
+        <div class="order-info">
+          <div class="title-line">
+            <h2>{{ order.productTitle || `商品 #${order.productId}` }}</h2>
             <el-tag :type="statusType(order.status)">{{ statusLabel(order.status) }}</el-tag>
-            <el-icon class="arrow"><ArrowRight /></el-icon>
+          </div>
+          <div class="meta-line">
+            <span>订单号 {{ order.orderNo }}</span>
+            <span>{{ tradeModeLabel(order.tradeMode) }}</span>
+            <span>{{ formatDate(order.createdAt) }}</span>
+          </div>
+          <div class="price-line">
+            <strong>¥{{ money(order.amount) }}</strong>
+            <small>{{ role === 'buyer' ? `卖家 #${order.sellerId}` : `买家 #${order.buyerId}` }}</small>
           </div>
         </div>
-      </el-card>
+        <el-icon class="arrow"><ArrowRight /></el-icon>
+      </article>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { ArrowRight } from '@element-plus/icons-vue'
+import { onMounted, ref } from 'vue'
+import { ArrowRight, Picture } from '@element-plus/icons-vue'
 import { listMyOrders, type Order } from '../../api/order'
+import { resolveMediaUrl } from '../../utils/media'
 
 const role = ref<'buyer' | 'seller'>('buyer')
 const orders = ref<Order[]>([])
@@ -100,24 +103,28 @@ function formatDate(dateStr: string) {
   return dateStr?.replace('T', ' ').substring(0, 16) ?? ''
 }
 
+function money(value?: number) {
+  return Number(value ?? 0).toFixed(2)
+}
+
 onMounted(loadOrders)
 </script>
 
 <style scoped>
 .order-list {
-  max-width: 800px;
+  max-width: 920px;
   margin: 0 auto;
 }
 .page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 18px;
 }
-.page-header h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 700;
+.page-header h1 {
+  margin: 4px 0 0;
+  font-size: 28px;
 }
 .order-cards {
   display: flex;
@@ -125,35 +132,86 @@ onMounted(loadOrders)
   gap: 12px;
 }
 .order-card {
-  cursor: pointer;
-  transition: box-shadow 0.2s;
-}
-.order-card-inner {
-  display: flex;
+  display: grid;
+  grid-template-columns: 112px 1fr auto;
+  gap: 14px;
   align-items: center;
-  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid var(--bfu-border);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(7, 59, 42, 0.04);
+}
+.order-card:hover {
+  border-color: var(--bfu-green-500);
+}
+.product-thumb {
+  width: 112px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--bfu-leaf-50);
+  color: var(--bfu-green-300);
+  font-size: 30px;
+}
+.product-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .order-info {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  min-width: 0;
 }
-.order-no {
-  font-weight: 600;
-  color: #334155;
-}
-.order-meta {
+.title-line {
   display: flex;
-  gap: 16px;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: flex-start;
+}
+.title-line h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.35;
+}
+.meta-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 8px 0;
+  color: var(--bfu-muted);
   font-size: 13px;
-  color: #64748b;
 }
-.order-right {
+.price-line {
   display: flex;
   align-items: center;
   gap: 12px;
 }
+.price-line strong {
+  color: var(--bfu-price);
+  font-size: 22px;
+}
+.price-line small {
+  color: var(--bfu-muted);
+}
 .arrow {
-  color: #94a3b8;
+  color: var(--bfu-muted);
+}
+@media (max-width: 700px) {
+  .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .order-card {
+    grid-template-columns: 86px 1fr;
+  }
+  .product-thumb {
+    width: 86px;
+  }
+  .arrow {
+    display: none;
+  }
 }
 </style>

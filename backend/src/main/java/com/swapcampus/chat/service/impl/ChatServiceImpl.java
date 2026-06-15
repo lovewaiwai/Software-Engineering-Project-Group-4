@@ -19,6 +19,10 @@ import com.swapcampus.common.enums.MessageType;
 import com.swapcampus.common.exception.BusinessException;
 import com.swapcampus.common.exception.ErrorCode;
 import com.swapcampus.common.moderation.ContentModerationService;
+import com.swapcampus.product.entity.ProductEntity;
+import com.swapcampus.product.entity.ProductImageEntity;
+import com.swapcampus.product.mapper.ProductImageMapper;
+import com.swapcampus.product.mapper.ProductMapper;
 import com.swapcampus.user.entity.UserEntity;
 import com.swapcampus.user.mapper.UserMapper;
 import com.swapcampus.user.service.UserModerationService;
@@ -41,6 +45,8 @@ public class ChatServiceImpl implements ChatService {
     private final ChatSessionMapper chatSessionMapper;
     private final ChatMessageMapper chatMessageMapper;
     private final UserMapper userMapper;
+    private final ProductMapper productMapper;
+    private final ProductImageMapper productImageMapper;
     private final UserModerationService userModerationService;
     private final UserVerificationGuard userVerificationGuard;
     private final ContentModerationService contentModerationService;
@@ -50,6 +56,8 @@ public class ChatServiceImpl implements ChatService {
     public ChatServiceImpl(ChatSessionMapper chatSessionMapper,
                            ChatMessageMapper chatMessageMapper,
                            UserMapper userMapper,
+                           ProductMapper productMapper,
+                           ProductImageMapper productImageMapper,
                            UserModerationService userModerationService,
                            UserVerificationGuard userVerificationGuard,
                            ContentModerationService contentModerationService,
@@ -58,16 +66,13 @@ public class ChatServiceImpl implements ChatService {
         this.chatSessionMapper = chatSessionMapper;
         this.chatMessageMapper = chatMessageMapper;
         this.userMapper = userMapper;
+        this.productMapper = productMapper;
+        this.productImageMapper = productImageMapper;
         this.userModerationService = userModerationService;
         this.userVerificationGuard = userVerificationGuard;
         this.contentModerationService = contentModerationService;
         this.sessionRegistry = sessionRegistry;
         this.objectMapper = objectMapper;
-    }
-
-    @Override
-    public String moduleName() {
-        return "chat";
     }
 
     @Override
@@ -240,6 +245,22 @@ public class ChatServiceImpl implements ChatService {
         UserEntity peer = userMapper.selectById(response.getPeerId());
         if (peer != null) {
             response.setPeerUsername(peer.getUsername());
+        }
+        if (session.getProductId() != null) {
+            ProductEntity product = productMapper.selectById(session.getProductId());
+            if (product != null) {
+                response.setProductTitle(product.getTitle());
+                response.setProductPrice(product.getPrice());
+                response.setProductStatus(product.getStatus());
+            }
+            ProductImageEntity cover = productImageMapper.selectOne(new LambdaQueryWrapper<ProductImageEntity>()
+                    .eq(ProductImageEntity::getProductId, session.getProductId())
+                    .orderByAsc(ProductImageEntity::getSortOrder)
+                    .orderByAsc(ProductImageEntity::getId)
+                    .last("OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY"));
+            if (cover != null) {
+                response.setProductImageUrl(cover.getUrl());
+            }
         }
         ChatMessageEntity lastMessage = chatMessageMapper.selectOne(new LambdaQueryWrapper<ChatMessageEntity>()
                 .eq(ChatMessageEntity::getSessionId, session.getId())

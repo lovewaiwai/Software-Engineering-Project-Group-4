@@ -12,6 +12,7 @@ import ProductListView from '../views/product/ProductListView.vue'
 import ProductDetailView from '../views/product/ProductDetailView.vue'
 import ProductCreateView from '../views/product/ProductCreateView.vue'
 import MyProductsView from '../views/product/MyProductsView.vue'
+import ProductHistoryView from '../views/product/ProductHistoryView.vue'
 import OrderListView from '../views/order/OrderListView.vue'
 import OrderDetailView from '../views/order/OrderDetailView.vue'
 import ChatView from '../views/chat/ChatView.vue'
@@ -40,6 +41,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'products', component: ProductListView },
       { path: 'products/new', component: ProductCreateView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
       { path: 'products/mine', component: MyProductsView, meta: { requiresAuth: true, requiresUser: true } },
+      { path: 'products/history', component: ProductHistoryView, meta: { requiresAuth: true, requiresUser: true } },
       { path: 'products/:id/edit', component: ProductCreateView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },
       { path: 'products/:id', component: ProductDetailView, props: true },
       { path: 'orders', component: OrderListView, meta: { requiresAuth: true, requiresUser: true, requiresVerified: true } },

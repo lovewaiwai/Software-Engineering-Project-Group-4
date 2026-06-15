@@ -66,6 +66,7 @@
             <el-button :icon="Star" :loading="favoriteLoading" @click="toggleFavorite">
               {{ product.favorited ? '取消收藏' : '收藏' }}
             </el-button>
+            <el-button :icon="Warning" :loading="reportLoading" @click="openReportDialog">举报</el-button>
           </div>
           <p v-if="!canBuy" class="hint">只有已上架商品可以购买，不能购买自己发布的商品。</p>
         </div>
@@ -94,16 +95,44 @@
         <el-button type="primary" :loading="orderLoading" @click="submitOrder">创建订单</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="reportDialogVisible" title="举报商品" width="430px">
+      <el-form label-position="top">
+        <el-form-item label="举报原因">
+          <el-select v-model="reportForm.reason" placeholder="请选择举报原因" style="width: 100%">
+            <el-option label="商品信息虚假" value="商品信息虚假" />
+            <el-option label="疑似违禁/违规商品" value="疑似违禁/违规商品" />
+            <el-option label="价格或描述存在欺诈" value="价格或描述存在欺诈" />
+            <el-option label="其他问题" value="其他问题" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="补充说明">
+          <el-input
+            v-model="reportForm.description"
+            type="textarea"
+            :rows="4"
+            maxlength="300"
+            show-word-limit
+            placeholder="请简要说明举报理由，便于管理员审核"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="reportDialogVisible = false">取消</el-button>
+        <el-button type="danger" :loading="reportLoading" @click="submitProductReport">提交举报</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowLeft, ChatDotRound, Picture, ShoppingCart, Star } from '@element-plus/icons-vue'
+import { ArrowLeft, ChatDotRound, Picture, ShoppingCart, Star, Warning } from '@element-plus/icons-vue'
 import { favoriteProduct, getProduct, recordProductView, unfavoriteProduct, type ProductItem } from '../../api/product'
 import { createOrder } from '../../api/order'
+import { createReport } from '../../api/report'
 import { useAuthStore } from '../../stores/auth'
 import { openOrCreateSession } from '../../stores/chat'
 import { getApiErrorMessage } from '../../utils/apiError'
@@ -115,10 +144,16 @@ const auth = useAuthStore()
 const loading = ref(false)
 const favoriteLoading = ref(false)
 const orderLoading = ref(false)
+const reportLoading = ref(false)
 const buyDialogVisible = ref(false)
+const reportDialogVisible = ref(false)
 const selectedTradeMode = ref('MEETUP')
 const product = ref<ProductItem | null>(null)
 const activeImage = ref('')
+const reportForm = reactive({
+  reason: '',
+  description: '',
+})
 
 const canBuy = computed(() => {
   if (!product.value) return false
@@ -200,6 +235,50 @@ async function toggleFavorite() {
     ElMessage.error(getApiErrorMessage(error, '收藏操作失败'))
   } finally {
     favoriteLoading.value = false
+  }
+}
+
+async function openReportDialog() {
+  if (!product.value) return
+  if (!auth.isLoggedIn) {
+    await goLogin()
+    return
+  }
+  if (auth.isAdmin) {
+    ElMessage.warning('管理员账号无需从前台发起商品举报，请在后台审核中处理')
+    return
+  }
+  if (product.value.sellerId === auth.userId) {
+    ElMessage.warning('不能举报自己发布的商品')
+    return
+  }
+  reportForm.reason = ''
+  reportForm.description = ''
+  reportDialogVisible.value = true
+}
+
+async function submitProductReport() {
+  if (!product.value) return
+  if (!reportForm.reason.trim()) {
+    ElMessage.warning('请选择举报原因')
+    return
+  }
+  reportLoading.value = true
+  try {
+    const response = await createReport({
+      targetType: 'PRODUCT',
+      targetId: product.value.id,
+      reportedUserId: product.value.sellerId,
+      reason: reportForm.reason.trim(),
+      description: reportForm.description.trim() || undefined,
+    })
+    if (response.code !== 0) throw new Error(response.message)
+    ElMessage.success('举报已提交，等待管理员审核')
+    reportDialogVisible.value = false
+  } catch (error) {
+    ElMessage.error(getApiErrorMessage(error, '提交举报失败'))
+  } finally {
+    reportLoading.value = false
   }
 }
 
@@ -295,18 +374,19 @@ function statusType(value?: string) {
 .summary,
 .description {
   background: #fff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--bfu-border);
   border-radius: 8px;
   padding: 16px;
+  box-shadow: 0 8px 22px rgba(7, 59, 42, 0.04);
 }
 .main-image {
   aspect-ratio: 4 / 3;
-  background: #f1f5f9;
+  background: var(--bfu-leaf-50);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #94a3b8;
+  color: var(--bfu-green-300);
   font-size: 44px;
   overflow: hidden;
 }
@@ -323,7 +403,7 @@ function statusType(value?: string) {
 }
 .thumb-list button {
   border: 2px solid transparent;
-  background: #f8fafc;
+  background: var(--bfu-mint-50);
   border-radius: 6px;
   padding: 0;
   aspect-ratio: 1;
@@ -331,7 +411,7 @@ function statusType(value?: string) {
   cursor: pointer;
 }
 .thumb-list button.active {
-  border-color: #409eff;
+  border-color: var(--bfu-green-600);
 }
 .thumb-list img {
   width: 100%;
@@ -351,7 +431,7 @@ function statusType(value?: string) {
 }
 .price {
   margin-top: 16px;
-  color: #ef4444;
+  color: var(--bfu-price);
   font-size: 30px;
   font-weight: 700;
 }
@@ -365,10 +445,14 @@ function statusType(value?: string) {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--bfu-border);
+  border-radius: 8px;
+  background: var(--bfu-mint-50);
 }
 .hint,
 .order-note {
-  color: #64748b;
+  color: var(--bfu-muted);
   line-height: 1.6;
 }
 .hint {
@@ -380,7 +464,7 @@ function statusType(value?: string) {
 }
 .description p {
   margin: 0;
-  color: #475569;
+  color: var(--bfu-muted);
   line-height: 1.8;
   white-space: pre-wrap;
 }

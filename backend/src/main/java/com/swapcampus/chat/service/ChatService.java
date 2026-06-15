@@ -9,8 +9,6 @@ import java.util.List;
 
 public interface ChatService {
 
-    String moduleName();
-
     ChatSessionResponse createOrGetSession(Long userId, CreateSessionRequest request);
 
     List<ChatSessionResponse> listSessions(Long userId);
