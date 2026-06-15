@@ -12,7 +12,7 @@
       <div class="bulk-head">
         <div>
           <h2>关键词批量通过</h2>
-          <p>适合教材、文具、数码配件等低风险闲置品；命中标题或描述后自动审核通过。</p>
+          <p>适合教材、文具、数码配件等低风险闲置品；命中标题、描述、分类或标签后自动审核通过。</p>
         </div>
         <el-button type="success" :loading="bulkLoading" :disabled="!selectedKeywords.length" @click="handleBulkApprove">
           一键通过命中商品
@@ -65,6 +65,12 @@
               <div class="product-main">
                 <strong>{{ row.title }}</strong>
                 <span>{{ row.categoryName || '未分类' }} · {{ conditionLabel(row.conditionLevel) }}</span>
+                <div v-if="row.tagNames?.length" class="tag-line">
+                  <el-tag v-for="tagName in row.tagNames" :key="tagName" size="small" effect="plain">
+                    {{ tagName }}
+                  </el-tag>
+                </div>
+                <div v-else class="tag-line empty">暂无标签</div>
                 <p>{{ row.description || '暂无描述' }}</p>
               </div>
             </div>
@@ -98,40 +104,19 @@
             <el-button type="success" size="small" :loading="actingId === row.id" @click="handleApprove(row.id)">
               通过
             </el-button>
-            <el-button type="danger" size="small" :disabled="actingId === row.id" @click="openReject(row)">
+            <el-button type="danger" size="small" :disabled="actingId === row.id" @click="handleReject(row.id)">
               拒绝
             </el-button>
           </template>
         </el-table-column>
       </el-table>
     </div>
-
-    <el-dialog v-model="rejectDialogVisible" title="拒绝商品" width="420px">
-      <el-form label-position="top">
-        <el-form-item label="拒绝原因">
-          <el-input
-            v-model="rejectReason"
-            type="textarea"
-            :rows="4"
-            maxlength="300"
-            show-word-limit
-            placeholder="请填写拒绝原因，卖家会在商品记录中看到"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="rejectDialogVisible = false">取消</el-button>
-        <el-button type="danger" :loading="actingId === rejectingProduct?.id" @click="handleReject">
-          确认拒绝
-        </el-button>
-      </template>
-    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { approveProduct, bulkApproveProducts, listPendingProducts, rejectProduct } from '../../api/admin'
 import type { ProductItem } from '../../api/product'
@@ -141,9 +126,6 @@ import { getApiErrorMessage } from '../../utils/apiError'
 const products = ref<ProductItem[]>([])
 const loading = ref(false)
 const actingId = ref<number | null>(null)
-const rejectDialogVisible = ref(false)
-const rejectingProduct = ref<ProductItem | null>(null)
-const rejectReason = ref('')
 const keywordPresets = ref([
   '教材',
   '课本',
@@ -228,28 +210,19 @@ function addCustomKeyword() {
   customKeyword.value = ''
 }
 
-function openReject(product: ProductItem) {
-  rejectingProduct.value = product
-  rejectReason.value = ''
-  rejectDialogVisible.value = true
-}
-
-async function handleReject() {
-  const product = rejectingProduct.value
-  const reason = rejectReason.value.trim()
-  if (!product) return
-  if (!reason) {
-    ElMessage.warning('请填写拒绝原因')
+async function handleReject(productId: number) {
+  try {
+    await ElMessageBox.confirm('确认拒绝该商品审核？卖家可修改后重新提交。', '拒绝商品', { type: 'warning' })
+  } catch {
     return
   }
-  actingId.value = product.id
+  actingId.value = productId
   try {
-    const response = await rejectProduct(product.id, reason)
+    const response = await rejectProduct(productId)
     if (response.code !== 0) {
       throw new Error(response.message || '拒绝商品失败')
     }
-    products.value = products.value.filter((item) => item.id !== product.id)
-    rejectDialogVisible.value = false
+    products.value = products.value.filter((item) => item.id !== productId)
     ElMessage.success('商品已拒绝')
   } catch (error) {
     ElMessage.error(getApiErrorMessage(error, '拒绝商品失败'))
@@ -386,6 +359,15 @@ function tradeModeLabel(mode: string) {
 }
 .product-main span {
   color: #64748b;
+  font-size: 12px;
+}
+.tag-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.tag-line.empty {
+  color: #94a3b8;
   font-size: 12px;
 }
 .product-main p {

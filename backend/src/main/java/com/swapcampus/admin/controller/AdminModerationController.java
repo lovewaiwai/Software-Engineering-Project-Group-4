@@ -56,7 +56,7 @@ public class AdminModerationController {
 
     @PostMapping("/products/{productId}/reject")
     public ApiResponse<ProductResponse> rejectProduct(@PathVariable Long productId,
-                                                      @Valid @RequestBody ProductReviewRequest request) {
+                                                      @Valid @RequestBody(required = false) ProductReviewRequest request) {
         Long reviewerId = requireProductReviewer();
         return ApiResponse.ok(adminModerationService.rejectProduct(reviewerId, productId, request));
     }

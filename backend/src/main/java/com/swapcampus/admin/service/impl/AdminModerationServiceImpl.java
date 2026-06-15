@@ -29,9 +29,13 @@ import com.swapcampus.order.mapper.OrderMapper;
 import com.swapcampus.product.entity.CategoryEntity;
 import com.swapcampus.product.entity.ProductEntity;
 import com.swapcampus.product.entity.ProductImageEntity;
+import com.swapcampus.product.entity.ProductTagEntity;
+import com.swapcampus.product.entity.TagEntity;
 import com.swapcampus.product.mapper.CategoryMapper;
 import com.swapcampus.product.mapper.ProductImageMapper;
 import com.swapcampus.product.mapper.ProductMapper;
+import com.swapcampus.product.mapper.ProductTagMapper;
+import com.swapcampus.product.mapper.TagMapper;
 import com.swapcampus.product.vo.ProductResponse;
 import com.swapcampus.report.entity.ReportActionEntity;
 import com.swapcampus.report.entity.ReportEntity;
@@ -79,6 +83,8 @@ public class AdminModerationServiceImpl implements AdminModerationService {
     private final CategoryMapper categoryMapper;
     private final ProductImageMapper productImageMapper;
     private final UserAccountService userAccountService;
+    private final ProductTagMapper productTagMapper;
+    private final TagMapper tagMapper;
 
     public AdminModerationServiceImpl(ReportMapper reportMapper,
                                       ReportActionMapper reportActionMapper,
@@ -93,7 +99,9 @@ public class AdminModerationServiceImpl implements AdminModerationService {
                                       AuditLogService auditLogService,
                                       CategoryMapper categoryMapper,
                                       ProductImageMapper productImageMapper,
-                                      UserAccountService userAccountService) {
+                                      UserAccountService userAccountService,
+                                      ProductTagMapper productTagMapper,
+                                      TagMapper tagMapper) {
         this.reportMapper = reportMapper;
         this.reportActionMapper = reportActionMapper;
         this.chatMessageMapper = chatMessageMapper;
@@ -108,6 +116,8 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         this.categoryMapper = categoryMapper;
         this.productImageMapper = productImageMapper;
         this.userAccountService = userAccountService;
+        this.productTagMapper = productTagMapper;
+        this.tagMapper = tagMapper;
     }
 
     @Override
@@ -192,15 +202,11 @@ public class AdminModerationServiceImpl implements AdminModerationService {
     @Transactional
     public ProductResponse rejectProduct(Long reviewerId, Long productId, ProductReviewRequest request) {
         ProductEntity product = requireReviewableProduct(productId);
-        String reason = request == null ? null : normalizeToNull(request.getReason());
-        if (reason == null) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST, "拒绝原因不能为空");
-        }
         product.setStatus(ProductStatus.REVIEW_REJECTED.name());
-        product.setAuditReason(reason);
+        product.setAuditReason(null);
         product.setUpdatedAt(LocalDateTime.now());
         productMapper.updateById(product);
-        auditLogService.record(reviewerId, "PRODUCT_REJECT", "PRODUCT", productId, reason);
+        auditLogService.record(reviewerId, "PRODUCT_REJECT", "PRODUCT", productId, "商品审核拒绝");
         return toProductResponse(product);
     }
 
@@ -402,8 +408,11 @@ public class AdminModerationServiceImpl implements AdminModerationService {
     }
 
     private boolean matchesAnyKeyword(ProductEntity product, Set<String> keywords) {
+        String category = categoryName(product.getCategoryId());
         String searchable = ((product.getTitle() == null ? "" : product.getTitle()) + " "
-                + (product.getDescription() == null ? "" : product.getDescription()))
+                + (product.getDescription() == null ? "" : product.getDescription()) + " "
+                + (category == null ? "" : category) + " "
+                + String.join(" ", tagNames(product.getId())))
                 .toLowerCase(Locale.ROOT);
         return keywords.stream().anyMatch(searchable::contains);
     }
@@ -465,10 +474,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         response.setCreatedAt(product.getCreatedAt());
         response.setUpdatedAt(product.getUpdatedAt());
 
-        CategoryEntity category = categoryMapper.selectById(product.getCategoryId());
-        if (category != null) {
-            response.setCategoryName(category.getName());
-        }
+        response.setCategoryName(categoryName(product.getCategoryId()));
 
         response.setImageUrls(productImageMapper.selectList(new LambdaQueryWrapper<ProductImageEntity>()
                         .eq(ProductImageEntity::getProductId, product.getId())
@@ -477,8 +483,34 @@ public class AdminModerationServiceImpl implements AdminModerationService {
                 .stream()
                 .map(ProductImageEntity::getUrl)
                 .toList());
+        response.setTagNames(tagNames(product.getId()));
 
         return response;
+    }
+
+    private String categoryName(Long categoryId) {
+        if (categoryId == null) {
+            return null;
+        }
+        CategoryEntity category = categoryMapper.selectById(categoryId);
+        return category == null ? null : category.getName();
+    }
+
+    private List<String> tagNames(Long productId) {
+        List<Long> tagIds = productTagMapper.selectList(new LambdaQueryWrapper<ProductTagEntity>()
+                        .eq(ProductTagEntity::getProductId, productId))
+                .stream()
+                .map(ProductTagEntity::getTagId)
+                .toList();
+        if (tagIds.isEmpty()) {
+            return List.of();
+        }
+        return tagMapper.selectList(new LambdaQueryWrapper<TagEntity>()
+                        .in(TagEntity::getId, tagIds)
+                        .eq(TagEntity::getStatus, "ACTIVE"))
+                .stream()
+                .map(TagEntity::getName)
+                .toList();
     }
 
     private List<String> parseTradeModes(String tradeModes) {

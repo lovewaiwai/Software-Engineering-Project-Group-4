@@ -20,9 +20,13 @@ import com.swapcampus.common.exception.ErrorCode;
 import com.swapcampus.product.entity.CategoryEntity;
 import com.swapcampus.product.entity.ProductEntity;
 import com.swapcampus.product.entity.ProductImageEntity;
+import com.swapcampus.product.entity.ProductTagEntity;
+import com.swapcampus.product.entity.TagEntity;
 import com.swapcampus.product.mapper.CategoryMapper;
 import com.swapcampus.product.mapper.ProductImageMapper;
 import com.swapcampus.product.mapper.ProductMapper;
+import com.swapcampus.product.mapper.ProductTagMapper;
+import com.swapcampus.product.mapper.TagMapper;
 import com.swapcampus.product.vo.ProductResponse;
 import com.swapcampus.report.entity.ReportActionEntity;
 import com.swapcampus.report.entity.ReportEntity;
@@ -85,6 +89,10 @@ class AdminModerationServiceImplTest {
     private ProductImageMapper productImageMapper;
     @Mock
     private UserAccountService userAccountService;
+    @Mock
+    private ProductTagMapper productTagMapper;
+    @Mock
+    private TagMapper tagMapper;
 
     private AdminModerationServiceImpl adminService;
 
@@ -104,7 +112,9 @@ class AdminModerationServiceImplTest {
                 auditLogService,
                 categoryMapper,
                 productImageMapper,
-                userAccountService
+                userAccountService,
+                productTagMapper,
+                tagMapper
         );
     }
 
@@ -114,6 +124,8 @@ class AdminModerationServiceImplTest {
         when(productMapper.selectById(10L)).thenReturn(product);
         when(categoryMapper.selectById(2L)).thenReturn(category());
         when(productImageMapper.selectList(any())).thenReturn(List.of(image("https://cdn.example/1.png")));
+        when(productTagMapper.selectList(any())).thenReturn(List.of(productTag(3L)));
+        when(tagMapper.selectList(any())).thenReturn(List.of(tag(3L, "教材")));
 
         ProductResponse response = adminService.approveProduct(99L, 10L);
 
@@ -123,41 +135,29 @@ class AdminModerationServiceImplTest {
         assertEquals("Book", response.getCategoryName());
         assertEquals(List.of("FACE_TO_FACE", "LOCKER"), response.getTradeModes());
         assertEquals(List.of("https://cdn.example/1.png"), response.getImageUrls());
+        assertEquals(List.of("教材"), response.getTagNames());
 
         verify(productMapper).updateById(product);
         verify(auditLogService).record(99L, "PRODUCT_APPROVE", "PRODUCT", 10L, "商品审核通过");
     }
 
     @Test
-    void rejectProductStoresReasonAndRecordsAuditLog() {
+    void rejectProductDoesNotRequireReasonAndRecordsAuditLog() {
         ProductEntity product = pendingProduct();
-        ProductReviewRequest request = new ProductReviewRequest();
-        request.setReason(" missing image ");
         when(productMapper.selectById(10L)).thenReturn(product);
         when(categoryMapper.selectById(2L)).thenReturn(category());
         when(productImageMapper.selectList(any())).thenReturn(List.of());
+        when(productTagMapper.selectList(any())).thenReturn(List.of());
 
-        ProductResponse response = adminService.rejectProduct(99L, 10L, request);
+        ProductResponse response = adminService.rejectProduct(99L, 10L, null);
 
         assertEquals(ProductStatus.REVIEW_REJECTED.name(), product.getStatus());
-        assertEquals("missing image", product.getAuditReason());
-        assertEquals("missing image", response.getAuditReason());
+        assertNull(product.getAuditReason());
+        assertNull(response.getAuditReason());
         assertEquals(ProductStatus.REVIEW_REJECTED.name(), response.getStatus());
 
         verify(productMapper).updateById(product);
-        verify(auditLogService).record(99L, "PRODUCT_REJECT", "PRODUCT", 10L, "missing image");
-    }
-
-    @Test
-    void rejectProductRequiresReason() {
-        ProductReviewRequest request = new ProductReviewRequest();
-        request.setReason("   ");
-        when(productMapper.selectById(10L)).thenReturn(pendingProduct());
-
-        BusinessException exception = assertThrows(BusinessException.class, () -> adminService.rejectProduct(99L, 10L, request));
-
-        assertEquals(ErrorCode.BAD_REQUEST, exception.getErrorCode());
-        verify(productMapper, never()).updateById(any(ProductEntity.class));
+        verify(auditLogService).record(99L, "PRODUCT_REJECT", "PRODUCT", 10L, "商品审核拒绝");
     }
 
     @Test
@@ -175,12 +175,14 @@ class AdminModerationServiceImplTest {
     @Test
     void bulkApproveProductsActivatesKeywordMatchedPendingProducts() {
         ProductEntity product = pendingProduct();
-        product.setTitle("数据结构教材");
+        product.setTitle("数据结构讲义");
         ProductBulkApproveRequest request = new ProductBulkApproveRequest();
         request.setKeywords(List.of("教材", "计算器"));
         when(productMapper.selectList(any())).thenReturn(List.of(product));
         when(categoryMapper.selectById(2L)).thenReturn(category());
         when(productImageMapper.selectList(any())).thenReturn(List.of());
+        when(productTagMapper.selectList(any())).thenReturn(List.of(productTag(3L)));
+        when(tagMapper.selectList(any())).thenReturn(List.of(tag(3L, "教材")));
 
         List<ProductResponse> response = adminService.bulkApproveProducts(99L, request);
 
@@ -295,6 +297,21 @@ class AdminModerationServiceImplTest {
         image.setUrl(url);
         image.setSortOrder(1);
         return image;
+    }
+
+    private ProductTagEntity productTag(Long tagId) {
+        ProductTagEntity productTag = new ProductTagEntity();
+        productTag.setProductId(10L);
+        productTag.setTagId(tagId);
+        return productTag;
+    }
+
+    private TagEntity tag(Long id, String name) {
+        TagEntity tag = new TagEntity();
+        tag.setId(id);
+        tag.setName(name);
+        tag.setStatus("ACTIVE");
+        return tag;
     }
 
     private UserEntity user(Long id, Role role, UserStatus status) {

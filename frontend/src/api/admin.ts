@@ -22,8 +22,8 @@ export async function bulkApproveProducts(keywords: string[]) {
   return data
 }
 
-export async function rejectProduct(productId: number, reason: string) {
-  const { data } = await apiClient.post<ApiResponse<ProductItem>>(`/admin/products/${productId}/reject`, { reason })
+export async function rejectProduct(productId: number) {
+  const { data } = await apiClient.post<ApiResponse<ProductItem>>(`/admin/products/${productId}/reject`)
   return data
 }
 
