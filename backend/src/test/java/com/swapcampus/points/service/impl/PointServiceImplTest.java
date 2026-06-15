@@ -15,6 +15,7 @@ import com.swapcampus.points.mapper.PointRecordMapper;
 import com.swapcampus.points.mapper.PointRedemptionMapper;
 import com.swapcampus.points.mapper.PointTaskMapper;
 import com.swapcampus.product.entity.ProductEntity;
+import com.swapcampus.order.mapper.OrderMapper;
 import com.swapcampus.product.mapper.ProductMapper;
 import com.swapcampus.user.entity.UserEntity;
 import com.swapcampus.user.entity.UserProfileEntity;
@@ -52,13 +53,14 @@ class PointServiceImplTest {
     @Mock private AuditLogService auditLogService;
     @Mock private UserAccountService userAccountService;
     @Mock private ProductMapper productMapper;
+    @Mock private OrderMapper orderMapper;
 
     private PointServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new PointServiceImpl(pointTaskMapper, pointRecordMapper, pointRedemptionMapper, userMapper,
-                userProfileMapper, auditLogService, userAccountService, productMapper);
+                userProfileMapper, auditLogService, userAccountService, productMapper, orderMapper);
         setCurrentUser(7L);
     }
 

@@ -111,12 +111,12 @@ UNION ALL SELECT id, -18, 42, N'多次交易纠纷扣除信用分', N'SEED', NUL
 
 INSERT INTO point_records (user_id, delta, balance_after, reason, ref_type, ref_id, created_at)
 SELECT id, 10, 10, N'每日签到', N'CHECK_IN', 1, DATEADD(DAY, -5, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
-UNION ALL SELECT id, 20, 30, N'完善资料', N'TASK', 101, DATEADD(DAY, -4, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
-UNION ALL SELECT id, 30, 60, N'首次发布商品', N'TASK', 103, DATEADD(DAY, -3, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
-UNION ALL SELECT id, 40, 100, N'完成首次交易', N'TASK', 104, DATEADD(DAY, -2, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
+UNION ALL SELECT id, 20, 30, N'完善资料', N'TASK', (SELECT id FROM point_tasks WHERE code = N'COMPLETE_PROFILE'), DATEADD(DAY, -4, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
+UNION ALL SELECT id, 30, 60, N'首次发布商品', N'TASK', (SELECT id FROM point_tasks WHERE code = N'FIRST_PUBLISH'), DATEADD(DAY, -3, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
+UNION ALL SELECT id, 40, 100, N'完成首次交易', N'TASK', (SELECT id FROM point_tasks WHERE code = N'FIRST_TRADE'), DATEADD(DAY, -2, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
 UNION ALL SELECT id, 60, 160, N'平台活动奖励', N'BONUS', NULL, DATEADD(DAY, -1, SYSDATETIME()) FROM users WHERE username = N'demo_buyer'
-UNION ALL SELECT id, 20, 20, N'完善资料', N'TASK', 101, DATEADD(DAY, -3, SYSDATETIME()) FROM users WHERE username = N'demo_seller'
-UNION ALL SELECT id, 30, 50, N'首次发布商品', N'TASK', 103, DATEADD(DAY, -2, SYSDATETIME()) FROM users WHERE username = N'demo_seller'
+UNION ALL SELECT id, 20, 20, N'完善资料', N'TASK', (SELECT id FROM point_tasks WHERE code = N'COMPLETE_PROFILE'), DATEADD(DAY, -3, SYSDATETIME()) FROM users WHERE username = N'demo_seller'
+UNION ALL SELECT id, 30, 50, N'首次发布商品', N'TASK', (SELECT id FROM point_tasks WHERE code = N'FIRST_PUBLISH'), DATEADD(DAY, -2, SYSDATETIME()) FROM users WHERE username = N'demo_seller'
 UNION ALL SELECT id, 30, 80, N'每日签到奖励', N'CHECK_IN', 2, DATEADD(DAY, -1, SYSDATETIME()) FROM users WHERE username = N'demo_seller'
 UNION ALL SELECT id, 20, 20, N'每日签到', N'CHECK_IN', 3, DATEADD(DAY, -1, SYSDATETIME()) FROM users WHERE username = N'muted_user'
 UNION ALL SELECT id, 300, 300, N'平台活动奖励', N'BONUS', NULL, DATEADD(DAY, -1, SYSDATETIME()) FROM users WHERE username = N'star_user'
