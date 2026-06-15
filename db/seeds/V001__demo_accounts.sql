@@ -420,3 +420,231 @@ WHERE NOT EXISTS (
   WHERE existing.name = t.name
 );
 GO
+
+-- 生成不少于 200 条商品种子数据，满足 T-02 选题指南验收要求。
+-- 图片使用占位图，重点保证商品列表、搜索、筛选、推荐和浏览历史有足够数据可演示。
+DECLARE @generatedProductCount INT = (
+  SELECT COUNT(*)
+  FROM products
+  WHERE title LIKE N'演示商品-%'
+);
+
+IF @generatedProductCount < 210
+BEGIN
+  DECLARE @categories TABLE (
+    rn INT IDENTITY(1,1) PRIMARY KEY,
+    category_id BIGINT NOT NULL,
+    category_name NVARCHAR(50) NOT NULL,
+    tag_name NVARCHAR(50) NOT NULL
+  );
+
+  INSERT INTO @categories (category_id, category_name, tag_name)
+  SELECT id, name,
+         CASE
+           WHEN name IN (N'教材教辅', N'图书资料') THEN N'教材'
+           WHEN name IN (N'数码电子') THEN N'数码'
+           WHEN name IN (N'生活用品') THEN N'生活用品'
+           WHEN name IN (N'运动户外') THEN N'运动装备'
+           WHEN name IN (N'学习文具') THEN N'学习文具'
+           ELSE N'其他'
+         END
+  FROM categories
+  WHERE status = N'ACTIVE'
+    AND name IN (N'教材教辅', N'图书资料', N'数码电子', N'生活用品', N'运动户外', N'学习文具', N'其他')
+  ORDER BY sort_order, id;
+
+  DECLARE @sellers TABLE (
+    rn INT IDENTITY(1,1) PRIMARY KEY,
+    seller_id BIGINT NOT NULL
+  );
+
+  INSERT INTO @sellers (seller_id)
+  SELECT id
+  FROM users
+  WHERE username IN (N'demo_seller', N'star_user', N'casual_user', N'new_user')
+    AND status = N'ACTIVE'
+  ORDER BY id;
+
+  DECLARE @categoryCount INT = (SELECT COUNT(*) FROM @categories);
+  DECLARE @sellerCount INT = (SELECT COUNT(*) FROM @sellers);
+  DECLARE @i INT = 1;
+  DECLARE @seq NVARCHAR(3);
+  DECLARE @categoryRow INT;
+  DECLARE @sellerRow INT;
+  DECLARE @variant INT;
+  DECLARE @categoryId BIGINT;
+  DECLARE @categoryName NVARCHAR(50);
+  DECLARE @tagName NVARCHAR(50);
+  DECLARE @sellerId BIGINT;
+  DECLARE @itemName NVARCHAR(80);
+  DECLARE @title NVARCHAR(120);
+  DECLARE @description NVARCHAR(MAX);
+  DECLARE @price DECIMAL(10,2);
+  DECLARE @originalPrice DECIMAL(10,2);
+  DECLARE @condition NVARCHAR(20);
+  DECLARE @campus NVARCHAR(50);
+  DECLARE @tradeModes NVARCHAR(100);
+  DECLARE @status NVARCHAR(30);
+  DECLARE @productId BIGINT;
+  DECLARE @tagId BIGINT;
+
+  WHILE @i <= 210 AND @categoryCount > 0 AND @sellerCount > 0
+  BEGIN
+    SET @seq = RIGHT(N'000' + CAST(@i AS NVARCHAR(3)), 3);
+    SET @categoryRow = ((@i - 1) % @categoryCount) + 1;
+    SET @sellerRow = ((@i - 1) % @sellerCount) + 1;
+    SET @variant = ((@i - 1) % 10) + 1;
+    SET @categoryId = NULL;
+    SET @categoryName = NULL;
+    SET @tagName = NULL;
+    SET @sellerId = NULL;
+    SET @productId = NULL;
+    SET @tagId = NULL;
+
+    SELECT @categoryId = category_id, @categoryName = category_name, @tagName = tag_name
+    FROM @categories
+    WHERE rn = @categoryRow;
+
+    SELECT @sellerId = seller_id
+    FROM @sellers
+    WHERE rn = @sellerRow;
+
+    SET @itemName = CASE
+      WHEN @categoryName IN (N'教材教辅', N'图书资料') THEN
+        CASE @variant
+          WHEN 1 THEN N'高等数学教材'
+          WHEN 2 THEN N'数据结构教材'
+          WHEN 3 THEN N'考研英语真题'
+          WHEN 4 THEN N'操作系统课堂笔记'
+          WHEN 5 THEN N'线性代数习题集'
+          WHEN 6 THEN N'概率论复习资料'
+          WHEN 7 THEN N'数据库系统概论'
+          WHEN 8 THEN N'计算机网络教材'
+          WHEN 9 THEN N'马克思主义原理资料'
+          ELSE N'大学物理实验报告册'
+        END
+      WHEN @categoryName = N'数码电子' THEN
+        CASE @variant
+          WHEN 1 THEN N'蓝牙耳机'
+          WHEN 2 THEN N'机械键盘'
+          WHEN 3 THEN N'无线鼠标'
+          WHEN 4 THEN N'移动电源'
+          WHEN 5 THEN N'护眼台灯'
+          WHEN 6 THEN N'手机支架'
+          WHEN 7 THEN N'平板保护壳'
+          WHEN 8 THEN N'电脑散热支架'
+          WHEN 9 THEN N'Type-C 扩展坞'
+          ELSE N'迷你音箱'
+        END
+      WHEN @categoryName = N'生活用品' THEN
+        CASE @variant
+          WHEN 1 THEN N'宿舍收纳箱'
+          WHEN 2 THEN N'床上书桌'
+          WHEN 3 THEN N'衣架套装'
+          WHEN 4 THEN N'桌面小风扇'
+          WHEN 5 THEN N'保温杯'
+          WHEN 6 THEN N'台式化妆镜'
+          WHEN 7 THEN N'床帘支架'
+          WHEN 8 THEN N'插线板'
+          WHEN 9 THEN N'小型置物架'
+          ELSE N'宿舍地垫'
+        END
+      WHEN @categoryName = N'运动户外' THEN
+        CASE @variant
+          WHEN 1 THEN N'篮球'
+          WHEN 2 THEN N'羽毛球拍'
+          WHEN 3 THEN N'瑜伽垫'
+          WHEN 4 THEN N'跑步臂包'
+          WHEN 5 THEN N'露营灯'
+          WHEN 6 THEN N'跳绳'
+          WHEN 7 THEN N'护膝'
+          WHEN 8 THEN N'运动水壶'
+          WHEN 9 THEN N'乒乓球拍'
+          ELSE N'健身弹力带'
+        END
+      WHEN @categoryName = N'学习文具' THEN
+        CASE @variant
+          WHEN 1 THEN N'科学计算器'
+          WHEN 2 THEN N'绘图画板'
+          WHEN 3 THEN N'文件夹套装'
+          WHEN 4 THEN N'钢笔'
+          WHEN 5 THEN N'便签套装'
+          WHEN 6 THEN N'订书机'
+          WHEN 7 THEN N'马克笔'
+          WHEN 8 THEN N'考试透明笔袋'
+          WHEN 9 THEN N'A4 活页纸'
+          ELSE N'绘图尺套装'
+        END
+      ELSE
+        CASE @variant
+          WHEN 1 THEN N'校园卡套'
+          WHEN 2 THEN N'桌游卡牌'
+          WHEN 3 THEN N'毕业纪念摆件'
+          WHEN 4 THEN N'手工钥匙扣'
+          WHEN 5 THEN N'演出票券'
+          WHEN 6 THEN N'帆布袋'
+          WHEN 7 THEN N'旧书签套装'
+          WHEN 8 THEN N'拍立得相纸'
+          WHEN 9 THEN N'宿舍门牌'
+          ELSE N'其他闲置小物'
+        END
+    END;
+
+    SET @title = N'演示商品-' + @seq + N' ' + @itemName;
+    SET @description = N'用于 SwapCampus 演示的校园闲置商品，来源于同学个人闲置，支持搜索、筛选、推荐和交易流程测试。编号：' + @seq;
+    SET @price = CAST(8 + ((@i * 7) % 260) + (@variant * 0.5) AS DECIMAL(10,2));
+    SET @originalPrice = CAST(@price + 25 + ((@i * 11) % 180) AS DECIMAL(10,2));
+    SET @condition = CASE @i % 4
+      WHEN 0 THEN N'NEW'
+      WHEN 1 THEN N'LIKE_NEW'
+      WHEN 2 THEN N'GOOD'
+      ELSE N'FAIR'
+    END;
+    SET @campus = CASE @i % 4
+      WHEN 0 THEN N'主校区'
+      WHEN 1 THEN N'东校区'
+      WHEN 2 THEN N'西校区'
+      ELSE N'北校区'
+    END;
+    SET @tradeModes = CASE @i % 3
+      WHEN 0 THEN N'MEETUP,LOCKER'
+      WHEN 1 THEN N'MEETUP'
+      ELSE N'LOCKER'
+    END;
+    SET @status = CASE WHEN @i % 21 = 0 THEN N'PENDING_REVIEW' ELSE N'ACTIVE' END;
+
+    IF NOT EXISTS (SELECT 1 FROM products WHERE title = @title)
+    BEGIN
+      INSERT INTO products (
+        seller_id, category_id, title, description, price, original_price, condition_level,
+        campus, trade_modes, status, view_count, favorite_count, created_at, updated_at, is_deleted
+      )
+      VALUES (
+        @sellerId, @categoryId, @title, @description, @price, @originalPrice, @condition,
+        @campus, @tradeModes, @status, (@i * 13) % 300, (@i * 5) % 60,
+        DATEADD(DAY, -(@i % 45), SYSDATETIME()),
+        DATEADD(DAY, -(@i % 20), SYSDATETIME()),
+        0
+      );
+
+      SET @productId = SCOPE_IDENTITY();
+      SET @tagId = (SELECT TOP 1 id FROM tags WHERE name = @tagName AND status = N'ACTIVE' ORDER BY id);
+
+      INSERT INTO product_images (product_id, url, sort_order)
+      VALUES (
+        @productId,
+        N'https://dummyimage.com/640x420/e2e8f0/334155&text=SwapCampus+' + @seq,
+        0
+      );
+
+      IF @tagId IS NOT NULL
+      BEGIN
+        INSERT INTO product_tags (product_id, tag_id)
+        VALUES (@productId, @tagId);
+      END
+    END
+
+    SET @i += 1;
+  END
+END
+GO
