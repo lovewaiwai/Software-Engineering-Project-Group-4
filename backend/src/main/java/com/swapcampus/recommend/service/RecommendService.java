@@ -6,7 +6,5 @@ import java.util.List;
 
 public interface RecommendService {
 
-    String moduleName();
-
     List<ProductResponse> recommendations(int limit);
 }

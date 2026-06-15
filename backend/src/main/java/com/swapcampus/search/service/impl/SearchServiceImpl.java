@@ -17,11 +17,6 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
-    public String moduleName() {
-        return "search";
-    }
-
-    @Override
     public PageResponse<ProductResponse> searchProducts(ProductSearchRequest request) {
         return productService.search(request);
     }

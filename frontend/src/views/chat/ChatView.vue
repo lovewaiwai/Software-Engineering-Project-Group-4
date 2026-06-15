@@ -26,6 +26,10 @@
             <strong>{{ session.peerUsername || `用户 ${session.peerId}` }}</strong>
             <span class="session-time">{{ formatMessageTime(session.lastMessageAt || session.createdAt) }}</span>
           </div>
+          <div v-if="session.productId" class="session-product">
+            <img v-if="session.productImageUrl" :src="resolveMediaUrl(session.productImageUrl)" :alt="session.productTitle" />
+            <span>{{ session.productTitle || `商品 #${session.productId}` }}</span>
+          </div>
           <div class="session-bottom">
             <p :class="{ unread: session.unreadCount > 0 }">{{ session.lastPreview || '暂无消息' }}</p>
           </div>
@@ -35,14 +39,24 @@
 
     <main class="chat-panel" v-if="activeSessionId">
       <header class="chat-header">
-        <div class="header-user">
-          <div class="avatar large">{{ peerInitial(activePeerName) }}</div>
-          <div>
-            <h2>{{ activePeerName }}</h2>
-            <span class="online-tag" :class="{ offline: !wsConnected }">
-              {{ wsConnected ? '在线 · 实时连接' : '离线 · 轮询模式' }}
-            </span>
+        <div class="header-left">
+          <div class="header-user">
+            <div class="avatar large">{{ peerInitial(activePeerName) }}</div>
+            <div>
+              <h2>{{ activePeerName }}</h2>
+              <span class="online-tag" :class="{ offline: !wsConnected }">
+                {{ wsConnected ? '在线 · 实时连接' : '离线 · 轮询模式' }}
+              </span>
+            </div>
           </div>
+          <button v-if="activeSession?.productId" type="button" class="chat-product-card" @click="$router.push(`/products/${activeSession.productId}`)">
+            <img v-if="activeSession.productImageUrl" :src="resolveMediaUrl(activeSession.productImageUrl)" :alt="activeSession.productTitle" />
+            <span v-else class="product-placeholder"><el-icon><Picture /></el-icon></span>
+            <span class="chat-product-info">
+              <strong>{{ activeSession.productTitle || `商品 #${activeSession.productId}` }}</strong>
+              <small>¥{{ money(activeSession.productPrice) }} · {{ productStatusLabel(activeSession.productStatus) }}</small>
+            </span>
+          </button>
         </div>
         <el-button class="header-report-btn" text type="danger" @click="openReportDrawer('user')">
           举报
@@ -246,6 +260,8 @@ const activePeerName = computed(() => {
   return session?.peerUsername || '聊天'
 })
 
+const activeSession = computed(() => sessions.value.find((item) => item.id === activeSessionId.value) ?? null)
+
 const activePeerId = computed(() => {
   const session = sessions.value.find((item) => item.id === activeSessionId.value)
   return session?.peerId ?? 0
@@ -272,6 +288,21 @@ function emojiMessageImage(message: ChatMessage) {
 
 function emojiMessageLabel(message: ChatMessage) {
   return resolveSticker(message.content)?.label ?? '[表情]'
+}
+
+function money(value?: number) {
+  return Number(value ?? 0).toFixed(2)
+}
+
+function productStatusLabel(status?: string) {
+  const map: Record<string, string> = {
+    ACTIVE: '在售',
+    LOCKED: '交易中',
+    SOLD: '已售出',
+    OFFLINE: '已下架',
+    PENDING_REVIEW: '待审核',
+  }
+  return status ? map[status] ?? status : '商品'
 }
 
 function toggleEmojiPicker() {
@@ -423,6 +454,14 @@ function openReportDrawer(mode: 'message' | 'user', message?: ChatMessage) {
 }
 
 function handleWsEvent(payload: WsPayload) {
+  if (payload.type === 'SOCKET_OPEN') {
+    wsConnected.value = true
+    return
+  }
+  if (payload.type === 'SOCKET_CLOSE') {
+    wsConnected.value = false
+    return
+  }
   if (payload.type === 'ERROR') {
     ElMessage.error(payload.errorMessage || '消息发送失败')
     return
@@ -451,7 +490,6 @@ async function scrollToBottom() {
 onMounted(async () => {
   document.addEventListener('click', handleDocumentClick)
   unsubscribeWs = subscribeChatSocket(handleWsEvent)
-  wsConnected.value = true
   messagePollTimer = setInterval(() => {
     void pollActiveSession()
   }, CHAT_MESSAGE_POLL_INTERVAL_MS)
@@ -496,9 +534,9 @@ watch(
 .chat-panel,
 .chat-empty {
   background: #fff;
-  border-radius: 20px;
-  border: 1px solid #e8edf5;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
+  border-radius: 8px;
+  border: 1px solid var(--bfu-border);
+  box-shadow: 0 10px 30px rgba(7, 59, 42, 0.05);
 }
 .session-list {
   padding: 18px;
@@ -520,8 +558,8 @@ watch(
   gap: 8px;
 }
 .session-count {
-  background: #eff6ff;
-  color: #2563eb;
+  background: var(--bfu-green-100);
+  color: var(--bfu-green-800);
   padding: 2px 10px;
   border-radius: 999px;
   font-size: 12px;
@@ -533,8 +571,8 @@ watch(
   gap: 12px;
   text-align: left;
   border: 1px solid transparent;
-  background: #f8fafc;
-  border-radius: 16px;
+  background: var(--bfu-mint-50);
+  border-radius: 8px;
   padding: 12px;
   margin-bottom: 10px;
   cursor: pointer;
@@ -542,8 +580,8 @@ watch(
 }
 .session-item:hover,
 .session-item.active {
-  border-color: #bfdbfe;
-  background: #eff6ff;
+  border-color: var(--bfu-green-500);
+  background: var(--bfu-green-100);
 }
 .session-body {
   flex: 1;
@@ -560,8 +598,30 @@ watch(
   font-size: 15px;
 }
 .session-time {
-  color: #94a3b8;
+  color: var(--bfu-muted);
   font-size: 12px;
+  white-space: nowrap;
+}
+.session-product {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+  color: var(--bfu-green-800);
+  font-size: 12px;
+  font-weight: 700;
+}
+.session-product img {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bfu-leaf-50);
+}
+.session-product span {
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 .session-bottom p {
@@ -593,9 +653,9 @@ watch(
 }
 .chat-header {
   padding: 18px 20px;
-  border-bottom: 1px solid #e8edf5;
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
-  border-radius: 20px 20px 0 0;
+  border-bottom: 1px solid var(--bfu-border);
+  background: linear-gradient(180deg, #ffffff 0%, var(--bfu-mint-50) 100%);
+  border-radius: 8px 8px 0 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -606,28 +666,82 @@ watch(
   font-weight: 600;
   flex-shrink: 0;
 }
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
 .header-user {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 .chat-header h2 {
   margin: 0;
   font-size: 18px;
 }
 .online-tag {
-  color: #16a34a;
+  color: var(--bfu-green-600);
   font-size: 12px;
 }
 .online-tag.offline {
   color: #94a3b8;
+}
+.chat-product-card {
+  min-width: 220px;
+  max-width: 420px;
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--bfu-border);
+  border-radius: 8px;
+  background: #fff;
+  padding: 7px;
+  text-align: left;
+  cursor: pointer;
+}
+.chat-product-card:hover {
+  border-color: var(--bfu-green-500);
+}
+.chat-product-card img,
+.product-placeholder {
+  width: 52px;
+  height: 52px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bfu-leaf-50);
+}
+.product-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--bfu-green-300);
+}
+.chat-product-info {
+  min-width: 0;
+}
+.chat-product-info strong,
+.chat-product-info small {
+  display: block;
+}
+.chat-product-info strong {
+  overflow: hidden;
+  color: var(--bfu-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-product-info small {
+  margin-top: 4px;
+  color: var(--bfu-muted);
 }
 .message-box {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding: 16px 20px;
-  background: #f4f6f9;
+  background: #f2f7f1;
 }
 .message-empty {
   text-align: center;
@@ -686,7 +800,7 @@ watch(
   line-height: 0;
 }
 .message-row.mine .bubble {
-  background: #3b82f6;
+  background: var(--bfu-green-600);
   color: #fff;
   border-radius: 16px 16px 4px 16px;
 }
@@ -756,12 +870,12 @@ watch(
 }
 .composer {
   padding: 14px 16px 16px;
-  border-top: 1px solid #e8edf5;
+  border-top: 1px solid var(--bfu-border);
   display: flex;
   gap: 10px;
   align-items: flex-end;
   background: #fff;
-  border-radius: 0 0 20px 20px;
+  border-radius: 0 0 8px 8px;
   flex-shrink: 0;
 }
 .composer-tools {
@@ -819,8 +933,8 @@ watch(
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #dbeafe, #bfdbfe);
-  color: #1d4ed8;
+  background: linear-gradient(135deg, var(--bfu-green-100), #bfe8cc);
+  color: var(--bfu-green-800);
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -843,6 +957,15 @@ watch(
   }
   .session-list {
     max-height: 200px;
+  }
+  .chat-header,
+  .header-left {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .chat-product-card {
+    max-width: none;
+    width: 100%;
   }
   .bubble-wrap {
     max-width: min(82%, 320px);

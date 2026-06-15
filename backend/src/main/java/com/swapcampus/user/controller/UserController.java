@@ -27,11 +27,6 @@ public class UserController {
         this.userService = userService;
     }
 
-    @GetMapping("/health")
-    public ApiResponse<UserResponse> health() {
-        return ApiResponse.ok(UserResponse.placeholder(userService.moduleName()));
-    }
-
     @GetMapping("/me")
     public ApiResponse<UserResponse> me() {
         return ApiResponse.ok(userService.getCurrentUser());

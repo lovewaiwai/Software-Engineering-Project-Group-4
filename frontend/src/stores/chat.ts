@@ -44,6 +44,9 @@ function ensureChatSocket() {
   }
   socket?.close()
   socket = new WebSocket(resolveWsUrl(auth.token))
+  socket.onopen = () => {
+    dispatchWsPayload({ type: 'SOCKET_OPEN' })
+  }
   socket.onmessage = (event) => {
     try {
       dispatchWsPayload(JSON.parse(event.data))
@@ -52,15 +55,22 @@ function ensureChatSocket() {
     }
   }
   socket.onclose = () => {
+    dispatchWsPayload({ type: 'SOCKET_CLOSE' })
     if (listeners.size > 0) {
       window.setTimeout(() => ensureChatSocket(), 3000)
     }
+  }
+  socket.onerror = () => {
+    dispatchWsPayload({ type: 'SOCKET_CLOSE' })
   }
 }
 
 export function subscribeChatSocket(onEvent: (payload: WsPayload) => void) {
   listeners.add(onEvent)
   ensureChatSocket()
+  if (socket?.readyState === WebSocket.OPEN) {
+    onEvent({ type: 'SOCKET_OPEN' })
+  }
   return () => {
     listeners.delete(onEvent)
     if (listeners.size === 0) {

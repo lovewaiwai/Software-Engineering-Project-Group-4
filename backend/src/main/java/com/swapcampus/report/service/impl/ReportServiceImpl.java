@@ -7,6 +7,8 @@ import com.swapcampus.common.enums.ReportStatus;
 import com.swapcampus.common.enums.ReportTargetType;
 import com.swapcampus.common.exception.BusinessException;
 import com.swapcampus.common.exception.ErrorCode;
+import com.swapcampus.product.entity.ProductEntity;
+import com.swapcampus.product.mapper.ProductMapper;
 import com.swapcampus.report.dto.CreateReportRequest;
 import com.swapcampus.report.entity.ReportEntity;
 import com.swapcampus.report.mapper.ReportMapper;
@@ -26,18 +28,16 @@ public class ReportServiceImpl implements ReportService {
     private final ReportMapper reportMapper;
     private final ChatMessageMapper chatMessageMapper;
     private final UserMapper userMapper;
+    private final ProductMapper productMapper;
 
     public ReportServiceImpl(ReportMapper reportMapper,
                              ChatMessageMapper chatMessageMapper,
-                             UserMapper userMapper) {
+                             UserMapper userMapper,
+                             ProductMapper productMapper) {
         this.reportMapper = reportMapper;
         this.chatMessageMapper = chatMessageMapper;
         this.userMapper = userMapper;
-    }
-
-    @Override
-    public String moduleName() {
-        return "report";
+        this.productMapper = productMapper;
     }
 
     @Override
@@ -61,6 +61,14 @@ public class ReportServiceImpl implements ReportService {
             }
             if (request.getReportedUserId() == null) {
                 request.setReportedUserId(request.getTargetId());
+            }
+        } else if (request.getTargetType() == ReportTargetType.PRODUCT) {
+            ProductEntity product = productMapper.selectById(request.getTargetId());
+            if (product == null) {
+                throw new BusinessException(ErrorCode.NOT_FOUND, "被举报商品不存在");
+            }
+            if (request.getReportedUserId() == null) {
+                request.setReportedUserId(product.getSellerId());
             }
         }
 

@@ -8,8 +8,6 @@ import com.swapcampus.user.vo.UserResponse;
 
 public interface UserService {
 
-    String moduleName();
-
     UserResponse getCurrentUser();
 
     UserResponse getUserById(Long userId);
@@ -19,6 +17,4 @@ public interface UserService {
     UserResponse verifyStudent(UserStudentVerifyRequest request);
 
     PageResponse<CreditRecordResponse> getCreditRecords(long page, long pageSize);
-
-    void adjustCreditScore(Long userId, int delta, String reason, String refType, Long refId);
 }

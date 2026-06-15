@@ -60,11 +60,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public String moduleName() {
-        return "user";
-    }
-
-    @Override
     public UserResponse getCurrentUser() {
         return getUserById(CurrentUserContext.requireUserId());
     }
@@ -151,26 +146,6 @@ public class UserServiceImpl implements UserService {
                 .map(CreditRecordResponse::from)
                 .toList();
         return new PageResponse<>(items, result.getCurrent(), result.getSize(), result.getTotal());
-    }
-
-    @Override
-    @Transactional
-    public void adjustCreditScore(Long userId, int delta, String reason, String refType, Long refId) {
-        UserEntity user = loadActiveUser(userId);
-        int currentScore = user.getCreditScore() == null ? 0 : user.getCreditScore();
-        int updatedScore = Math.max(0, Math.min(100, currentScore + delta));
-        user.setCreditScore(updatedScore);
-        userMapper.updateById(user);
-
-        CreditRecordEntity record = new CreditRecordEntity();
-        record.setUserId(userId);
-        record.setDelta(delta);
-        record.setScoreAfter(updatedScore);
-        record.setReason(requireText(reason, "信用分变动原因不能为空"));
-        record.setRefType(normalizeToNull(refType));
-        record.setRefId(refId);
-        record.setCreatedAt(LocalDateTime.now(SHANGHAI));
-        creditRecordMapper.insert(record);
     }
 
     private UserEntity loadUser(Long userId) {

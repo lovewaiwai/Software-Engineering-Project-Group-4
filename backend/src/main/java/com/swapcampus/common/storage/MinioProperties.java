@@ -11,6 +11,7 @@ public class MinioProperties {
     private String secretKey;
     private String bucket;
     private String chatPrefix = "chat";
+    private String stickerPrefix = "stickers";
 
     public String getEndpoint() {
         return endpoint;
@@ -58,5 +59,13 @@ public class MinioProperties {
 
     public void setChatPrefix(String chatPrefix) {
         this.chatPrefix = chatPrefix;
+    }
+
+    public String getStickerPrefix() {
+        return stickerPrefix;
+    }
+
+    public void setStickerPrefix(String stickerPrefix) {
+        this.stickerPrefix = stickerPrefix;
     }
 }

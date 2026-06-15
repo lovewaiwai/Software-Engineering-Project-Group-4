@@ -45,11 +45,6 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public String moduleName() {
-        return "auth";
-    }
-
-    @Override
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         String username = normalize(request.getUsername());

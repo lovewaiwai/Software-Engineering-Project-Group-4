@@ -3,7 +3,6 @@ package com.swapcampus.recommend.controller;
 import com.swapcampus.common.api.ApiResponse;
 import com.swapcampus.product.vo.ProductResponse;
 import com.swapcampus.recommend.service.RecommendService;
-import com.swapcampus.recommend.vo.RecommendResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,11 +18,6 @@ public class RecommendController {
 
     public RecommendController(RecommendService recommendService) {
         this.recommendService = recommendService;
-    }
-
-    @GetMapping("/recommend/health")
-    public ApiResponse<RecommendResponse> health() {
-        return ApiResponse.ok(RecommendResponse.placeholder(recommendService.moduleName()));
     }
 
     @GetMapping("/recommendations")

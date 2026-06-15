@@ -11,11 +11,6 @@ export interface PageResponse<T> {
   total: number
 }
 
-export interface ModuleHealth {
-  module: string
-  status: string
-}
-
 export interface UserProfile {
   realName?: string
   studentNo?: string
@@ -69,6 +64,10 @@ export interface ChatSession {
   sellerId: number
   peerId: number
   peerUsername?: string
+  productTitle?: string
+  productImageUrl?: string
+  productPrice?: number
+  productStatus?: string
   lastPreview?: string
   unreadCount: number
   lastMessageAt?: string

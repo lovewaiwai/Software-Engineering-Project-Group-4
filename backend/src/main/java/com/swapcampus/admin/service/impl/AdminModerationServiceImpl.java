@@ -41,6 +41,7 @@ import com.swapcampus.user.entity.UserEntity;
 import com.swapcampus.user.entity.UserProfileEntity;
 import com.swapcampus.user.mapper.UserMapper;
 import com.swapcampus.user.mapper.UserProfileMapper;
+import com.swapcampus.user.service.UserAccountService;
 import com.swapcampus.user.service.UserModerationService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,6 +60,9 @@ import java.util.Set;
 @Service
 public class AdminModerationServiceImpl implements AdminModerationService {
 
+    private static final int VALID_REPORT_DELTA = -5;
+    private static final int PRODUCT_VIOLATION_DELTA = -10;
+
     private final ReportMapper reportMapper;
     private final ReportActionMapper reportActionMapper;
     private final ChatMessageMapper chatMessageMapper;
@@ -72,6 +76,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
     private final AuditLogService auditLogService;
     private final CategoryMapper categoryMapper;
     private final ProductImageMapper productImageMapper;
+    private final UserAccountService userAccountService;
 
     public AdminModerationServiceImpl(ReportMapper reportMapper,
                                       ReportActionMapper reportActionMapper,
@@ -85,7 +90,8 @@ public class AdminModerationServiceImpl implements AdminModerationService {
                                       ChatWebSocketSessionRegistry sessionRegistry,
                                       AuditLogService auditLogService,
                                       CategoryMapper categoryMapper,
-                                      ProductImageMapper productImageMapper) {
+                                      ProductImageMapper productImageMapper,
+                                      UserAccountService userAccountService) {
         this.reportMapper = reportMapper;
         this.reportActionMapper = reportActionMapper;
         this.chatMessageMapper = chatMessageMapper;
@@ -99,6 +105,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         this.auditLogService = auditLogService;
         this.categoryMapper = categoryMapper;
         this.productImageMapper = productImageMapper;
+        this.userAccountService = userAccountService;
     }
 
     @Override
@@ -211,13 +218,17 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         reportActionMapper.insert(action);
 
         switch (request.getActionType()) {
-            case WARN -> report.setStatus(ReportStatus.RESOLVED);
+            case WARN -> {
+                applyValidReportPenalty(report, reportId);
+                report.setStatus(ReportStatus.RESOLVED);
+            }
             case MUTE -> {
                 if (report.getReportedUserId() == null) {
                     throw new BusinessException(ErrorCode.BAD_REQUEST, "缺少被举报人");
                 }
                 int hours = request.getMuteHours() == null ? 24 : request.getMuteHours();
                 userModerationService.muteUser(report.getReportedUserId(), adminId, hours, request.getNote());
+                applyValidReportPenalty(report, reportId);
                 report.setStatus(ReportStatus.RESOLVED);
             }
             case BAN -> {
@@ -230,6 +241,11 @@ public class AdminModerationServiceImpl implements AdminModerationService {
                     userMapper.updateById(user);
                     sessionRegistry.disconnect(report.getReportedUserId());
                 }
+                applyValidReportPenalty(report, reportId);
+                report.setStatus(ReportStatus.RESOLVED);
+            }
+            case REMOVE_PRODUCT -> {
+                handleProductViolation(report, reportId);
                 report.setStatus(ReportStatus.RESOLVED);
             }
             case REJECT -> {
@@ -243,6 +259,31 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         auditLogService.record(adminId, "REPORT_ACTION", "REPORT", reportId,
                 request.getActionType().name() + ": " + (request.getNote() == null ? "" : request.getNote()));
         return ReportResponse.from(report);
+    }
+
+    private void applyValidReportPenalty(ReportEntity report, Long reportId) {
+        if (report.getReportedUserId() == null) {
+            return;
+        }
+        userAccountService.addCredit(report.getReportedUserId(), VALID_REPORT_DELTA, "有效举报成立", "REPORT", reportId);
+    }
+
+    private void handleProductViolation(ReportEntity report, Long reportId) {
+        if (report.getTargetType() != ReportTargetType.PRODUCT) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "只有商品举报可以执行下架处理");
+        }
+        ProductEntity product = productMapper.selectById(report.getTargetId());
+        if (product == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "被举报商品不存在");
+        }
+        product.setStatus(ProductStatus.OFFLINE.name());
+        product.setAuditReason("举报成立：违规商品下架");
+        product.setUpdatedAt(LocalDateTime.now());
+        productMapper.updateById(product);
+        Long sellerId = report.getReportedUserId() == null ? product.getSellerId() : report.getReportedUserId();
+        if (sellerId != null) {
+            userAccountService.addCredit(sellerId, PRODUCT_VIOLATION_DELTA, "违规商品下架", "REPORT", reportId);
+        }
     }
 
     @Override

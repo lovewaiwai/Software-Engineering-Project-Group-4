@@ -1,7 +1,13 @@
 <template>
   <el-container class="app-layout">
     <el-aside class="app-sidebar" width="220px">
-      <div class="brand">SwapCampus</div>
+      <div class="brand">
+        <span class="brand-mark">林</span>
+        <span>
+          <strong>SwapCampus</strong>
+          <small>北林闲置</small>
+        </span>
+      </div>
       <el-menu router :default-active="$route.path" class="nav-menu">
         <el-menu-item index="/">
           <el-icon><House /></el-icon>
@@ -14,6 +20,10 @@
         <el-menu-item v-if="auth.isLoggedIn && !auth.isAdmin" index="/products/mine">
           <el-icon><Goods /></el-icon>
           <span>我的发布</span>
+        </el-menu-item>
+        <el-menu-item v-if="auth.isLoggedIn && !auth.isAdmin" index="/products/history">
+          <el-icon><Clock /></el-icon>
+          <span>浏览历史</span>
         </el-menu-item>
         <el-menu-item index="/orders">
           <el-icon><Tickets /></el-icon>
@@ -28,7 +38,7 @@
     </el-aside>
     <el-container>
       <el-header class="app-header">
-        <el-button v-if="!auth.isAdmin" type="primary" @click="$router.push('/products/new')">发布</el-button>
+        <el-button v-if="!auth.isAdmin" type="primary" class="publish-btn" @click="$router.push('/products/new')">发布闲置</el-button>
         <el-button v-if="!auth.isLoggedIn" @click="$router.push('/login')">登录</el-button>
         <el-dropdown v-else trigger="click" @command="handleCommand">
           <span class="user-entry">
@@ -55,7 +65,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ChatDotRound, Goods, House, Tickets, User } from '@element-plus/icons-vue'
+import { ChatDotRound, Clock, Goods, House, Tickets, User } from '@element-plus/icons-vue'
 import UnreadBadge from '../components/chat/UnreadBadge.vue'
 import { fetchCurrentUser } from '../api/user'
 import { useAuthStore } from '../stores/auth'
@@ -111,16 +121,44 @@ function handleCommand(command: string) {
   min-height: 100vh;
 }
 .app-sidebar {
-  border-right: 1px solid #e2e8f0;
-  background: #fff;
+  border-right: 1px solid var(--bfu-border);
+  background: linear-gradient(180deg, #ffffff 0%, var(--bfu-mint-50) 100%);
 }
 .brand {
-  padding: 20px 16px;
-  font-size: 18px;
+  height: 72px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--bfu-green-800);
+}
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--bfu-green-700);
+  color: #fff;
+  font-weight: 800;
+}
+.brand strong,
+.brand small {
+  display: block;
+}
+.brand strong {
+  font-size: 17px;
   font-weight: 700;
+}
+.brand small {
+  margin-top: 2px;
+  color: var(--bfu-muted);
+  font-size: 12px;
+  font-weight: 600;
 }
 .nav-menu {
   border-right: none;
+  background: transparent;
 }
 .nav-menu :deep(.chat-menu-item) {
   position: relative;
@@ -138,12 +176,16 @@ function handleCommand(command: string) {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #fff;
+  border-bottom: 1px solid var(--bfu-border);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
 }
 .app-main {
-  background: #f8fafc;
+  background: linear-gradient(180deg, var(--bfu-mint-50) 0%, #f7faf7 100%);
   padding: 20px 24px;
+}
+.publish-btn {
+  font-weight: 700;
 }
 .user-entry {
   display: inline-flex;
@@ -156,6 +198,6 @@ function handleCommand(command: string) {
   border-radius: 8px;
 }
 .user-entry:hover {
-  background: #f1f5f9;
+  background: var(--bfu-green-100);
 }
 </style>

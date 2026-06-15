@@ -7,8 +7,7 @@ public enum ErrorCode {
     FORBIDDEN(40300, "forbidden"),
     NOT_FOUND(40400, "resource not found"),
     VALIDATION_FAILED(42200, "validation failed"),
-    INTERNAL_ERROR(50000, "internal server error"),
-    TODO_NOT_IMPLEMENTED(90000, "not implemented yet");
+    INTERNAL_ERROR(50000, "internal server error");
 
     private final int code;
     private final String message;

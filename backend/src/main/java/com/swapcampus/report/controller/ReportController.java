@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/reports")
@@ -23,11 +22,6 @@ public class ReportController {
 
     public ReportController(ReportService reportService) {
         this.reportService = reportService;
-    }
-
-    @GetMapping("/health")
-    public ApiResponse<Map<String, String>> health() {
-        return ApiResponse.ok(Map.of("module", reportService.moduleName(), "status", "ok"));
     }
 
     @PostMapping

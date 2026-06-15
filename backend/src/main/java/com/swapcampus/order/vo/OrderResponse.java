@@ -13,6 +13,9 @@ public class OrderResponse {
     private BigDecimal amount;
     private String status;
     private String tradeMode;
+    private String productTitle;
+    private String productImageUrl;
+    private String productStatus;
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;
 
@@ -47,6 +50,12 @@ public class OrderResponse {
     public void setStatus(String status) { this.status = status; }
     public String getTradeMode() { return tradeMode; }
     public void setTradeMode(String tradeMode) { this.tradeMode = tradeMode; }
+    public String getProductTitle() { return productTitle; }
+    public void setProductTitle(String productTitle) { this.productTitle = productTitle; }
+    public String getProductImageUrl() { return productImageUrl; }
+    public void setProductImageUrl(String productImageUrl) { this.productImageUrl = productImageUrl; }
+    public String getProductStatus() { return productStatus; }
+    public void setProductStatus(String productStatus) { this.productStatus = productStatus; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getCompletedAt() { return completedAt; }

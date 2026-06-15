@@ -84,8 +84,16 @@
           <div class="actions">
             <el-button type="warning" @click="handle('WARN')">警告并结案</el-button>
             <el-button type="danger" @click="handle('MUTE')">禁言并结案</el-button>
-            <el-button type="danger" plain @click="handle('BAN')">封禁并结案</el-button>
-            <el-button @click="handle('REJECT')">驳回举报</el-button>
+            <el-button type="danger" plain @click="handle('BAN')">封禁并结案</el-button>
+            <el-button
+              v-if="detail.report.targetType === 'PRODUCT'"
+              type="danger"
+              plain
+              @click="handle('REMOVE_PRODUCT')"
+            >
+              下架商品并结案
+            </el-button>
+            <el-button @click="handle('REJECT')">驳回举报</el-button>
           </div>
         </section>
         <el-alert v-else type="success" show-icon :closable="false" title="该举报已处理，仍可对用户执行封禁/解封操作。" />
@@ -153,9 +161,11 @@ async function handle(actionType: string) {
   if (actionType === 'REJECT') {
     const { value } = await ElMessageBox.prompt('请输入驳回原因', '驳回举报')
     note = value
-  } else if (actionType === 'BAN') {
-    await ElMessageBox.confirm('将封禁被举报用户并结案，是否继续？', '封禁并结案', { type: 'warning' })
-  }
+  } else if (actionType === 'BAN') {
+    await ElMessageBox.confirm('将封禁被举报用户并结案，是否继续？', '封禁并结案', { type: 'warning' })
+  } else if (actionType === 'REMOVE_PRODUCT') {
+    await ElMessageBox.confirm('将下架被举报商品并扣除卖家信用分，是否继续？', '下架商品并结案', { type: 'warning' })
+  }
   const response = await handleReport(activeReportId.value, {
     actionType,
     note,

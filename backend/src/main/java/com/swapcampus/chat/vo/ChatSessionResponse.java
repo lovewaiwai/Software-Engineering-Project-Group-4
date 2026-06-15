@@ -2,6 +2,7 @@ package com.swapcampus.chat.vo;
 
 import com.swapcampus.chat.entity.ChatSessionEntity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class ChatSessionResponse {
@@ -12,6 +13,10 @@ public class ChatSessionResponse {
     private Long sellerId;
     private Long peerId;
     private String peerUsername;
+    private String productTitle;
+    private String productImageUrl;
+    private BigDecimal productPrice;
+    private String productStatus;
     private String lastPreview;
     private int unreadCount;
     private LocalDateTime lastMessageAt;
@@ -75,6 +80,38 @@ public class ChatSessionResponse {
 
     public void setPeerUsername(String peerUsername) {
         this.peerUsername = peerUsername;
+    }
+
+    public String getProductTitle() {
+        return productTitle;
+    }
+
+    public void setProductTitle(String productTitle) {
+        this.productTitle = productTitle;
+    }
+
+    public String getProductImageUrl() {
+        return productImageUrl;
+    }
+
+    public void setProductImageUrl(String productImageUrl) {
+        this.productImageUrl = productImageUrl;
+    }
+
+    public BigDecimal getProductPrice() {
+        return productPrice;
+    }
+
+    public void setProductPrice(BigDecimal productPrice) {
+        this.productPrice = productPrice;
+    }
+
+    public String getProductStatus() {
+        return productStatus;
+    }
+
+    public void setProductStatus(String productStatus) {
+        this.productStatus = productStatus;
     }
 
     public String getLastPreview() {

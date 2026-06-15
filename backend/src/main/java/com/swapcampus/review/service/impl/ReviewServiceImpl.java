@@ -11,7 +11,7 @@ import com.swapcampus.review.entity.ReviewEntity;
 import com.swapcampus.review.mapper.ReviewMapper;
 import com.swapcampus.review.service.ReviewService;
 import com.swapcampus.review.vo.ReviewResponse;
-import com.swapcampus.user.service.UserService;
+import com.swapcampus.user.service.UserAccountService;
 import com.swapcampus.user.service.UserVerificationGuard;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,16 +27,16 @@ public class ReviewServiceImpl implements ReviewService {
     private final ReviewMapper reviewMapper;
     private final OrderMapper orderMapper;
     private final UserVerificationGuard userVerificationGuard;
-    private final UserService userService;
+    private final UserAccountService userAccountService;
 
     public ReviewServiceImpl(ReviewMapper reviewMapper,
                              OrderMapper orderMapper,
                              UserVerificationGuard userVerificationGuard,
-                             UserService userService) {
+                             UserAccountService userAccountService) {
         this.reviewMapper = reviewMapper;
         this.orderMapper = orderMapper;
         this.userVerificationGuard = userVerificationGuard;
-        this.userService = userService;
+        this.userAccountService = userAccountService;
     }
 
     @Override
@@ -86,11 +86,11 @@ public class ReviewServiceImpl implements ReviewService {
             delta = -2;
         }
         if (delta != 0) {
-            userService.adjustCreditScore(
+            userAccountService.addCredit(
                     revieweeId,
                     delta,
                     delta > 0 ? "获得好评" : "获得差评",
-                    "review",
+                    "REVIEW",
                     review.getId()
             );
         }

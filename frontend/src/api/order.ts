@@ -12,6 +12,9 @@ export interface Order {
     amount: number
     status: string
     tradeMode: string
+    productTitle?: string
+    productImageUrl?: string
+    productStatus?: string
     createdAt: string
     completedAt?: string
 }

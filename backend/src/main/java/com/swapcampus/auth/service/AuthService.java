@@ -6,8 +6,6 @@ import com.swapcampus.auth.vo.AuthResponse;
 
 public interface AuthService {
 
-    String moduleName();
-
     AuthResponse register(RegisterRequest request);
 
     AuthResponse login(LoginRequest request);
