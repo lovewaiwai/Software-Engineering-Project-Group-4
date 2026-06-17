@@ -1,0 +1,36 @@
+# Word/Office temporary lock files
+~$*.docx
+~$*.doc
+~$*.xlsx
+~$*.xls
+~$*.pptx
+~$*.ppt
+
+# Generic temporary and OS metadata files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Local workspace drafts that are not part of the initial docs push
+workspace/
+
+# Local team drafts and management forms
+team_docs/
+交付文档_T-02_SwapCampus/管理表单/
+T-02_SwapCampus_选题申报表_草稿.docx
+
+# Build artifacts and local dependencies
+backend/target/
+backend/uploads/
+frontend/node_modules/
+frontend/dist/
+
+# Local environment overrides
+.env
+.env.*
+!.env.example
+
+# IDE/build cache
+.idea/
+.vscode/
